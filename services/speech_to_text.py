@@ -9,7 +9,14 @@ import os
 import json
 import time
 import requests
-from pydub import AudioSegment
+
+# Vercel环境下不使用pydub
+AudioSegment = None
+if not os.environ.get('VERCEL'):
+    try:
+        from pydub import AudioSegment
+    except ImportError:
+        AudioSegment = None
 
 
 class SpeechToText:
@@ -197,11 +204,13 @@ class SpeechToText:
         模拟转写结果（当API未配置时使用）
         """
         # 获取音频时长
-        try:
-            audio = AudioSegment.from_mp3(audio_path)
-            duration = len(audio) / 1000
-        except:
-            duration = 60
+        duration = 60
+        if AudioSegment is not None:
+            try:
+                audio = AudioSegment.from_mp3(audio_path)
+                duration = len(audio) / 1000
+            except:
+                pass
         
         # 生成模拟数据
         mock_texts = [

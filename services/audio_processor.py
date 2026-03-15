@@ -10,16 +10,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Vercel环境下不使用pyannote
 PYANNOTE_AVAILABLE = False
 Pipeline = None
 
-try:
-    from pyannote.audio import Pipeline
-    PYANNOTE_AVAILABLE = True
-    logger.info("pyannote.audio 已成功导入")
-except ImportError as e:
-    logger.warning(f"pyannote.audio 导入失败: {e}，将使用模拟模式")
-    PYANNOTE_AVAILABLE = False
+if not os.environ.get('VERCEL'):
+    try:
+        from pyannote.audio import Pipeline
+        PYANNOTE_AVAILABLE = True
+        logger.info("pyannote.audio 已成功导入")
+    except ImportError as e:
+        logger.warning(f"pyannote.audio 导入失败: {e}，将使用模拟模式")
+        PYANNOTE_AVAILABLE = False
+else:
+    logger.info("Vercel环境 detected，跳过 pyannote.audio 导入")
 
 
 class AudioProcessor:
