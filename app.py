@@ -180,9 +180,12 @@ def process_audio():
                 'speaker2_data': speaker2_text
             }
             
-            database.save_record(record)
+            record_id = database.save_record(record)
+            logger.info(f'分析记录保存成功，记录ID: {record_id}')
         except Exception as e:
-            logger.warning(f'保存分析记录失败: {str(e)}')
+            logger.error(f'保存分析记录失败: {str(e)}')
+            import traceback
+            logger.error(traceback.format_exc())
         
         return jsonify({
             'success': True,
@@ -579,8 +582,19 @@ def get_history():
         limit = request.args.get('limit', 20, type=int)
         offset = request.args.get('offset', 0, type=int)
         
+        logger.info(f"获取历史记录: limit={limit}, offset={offset}")
+        logger.info(f"数据库路径: {database.DB_PATH}")
+        
+        # 检查数据库文件是否存在
+        if os.path.exists(database.DB_PATH):
+            logger.info(f"数据库文件存在，大小: {os.path.getsize(database.DB_PATH)} bytes")
+        else:
+            logger.warning(f"数据库文件不存在: {database.DB_PATH}")
+        
         records = database.get_records(limit=limit, offset=offset)
         total = database.get_records_count()
+        
+        logger.info(f"获取到 {len(records)} 条记录，总计 {total} 条")
         
         return jsonify({
             'records': records,
@@ -590,6 +604,9 @@ def get_history():
         })
         
     except Exception as e:
+        logger.error(f"获取历史记录失败: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({'error': f'获取历史记录失败: {str(e)}'}), 500
 
 
