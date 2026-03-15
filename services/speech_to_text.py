@@ -10,13 +10,12 @@ import json
 import time
 import requests
 
-# Vercel环境下不使用pydub
+# Cloudflare环境下不使用pydub
 AudioSegment = None
-if not os.environ.get('VERCEL'):
-    try:
-        from pydub import AudioSegment
-    except ImportError:
-        AudioSegment = None
+try:
+    from pydub import AudioSegment
+except ImportError:
+    AudioSegment = None
 
 
 class SpeechToText:
