@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": null,
-  "installCommand": null,
+  "installCommand": "pip install -r requirements.txt",
   "framework": null,
   "outputDirectory": null,
   "rewrites": [
