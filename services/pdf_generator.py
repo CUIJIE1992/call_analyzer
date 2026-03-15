@@ -18,27 +18,92 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 
 def get_chinese_font():
     """获取中文字体"""
-    font_paths = [
+    # Windows 字体路径
+    windows_font_paths = [
         'C:/Windows/Fonts/msyh.ttc',
         'C:/Windows/Fonts/simhei.ttf',
         'C:/Windows/Fonts/simsun.ttc',
+        'C:/Windows/Fonts/msgothic.ttc',
     ]
     
-    for font_path in font_paths:
+    # Linux 字体路径（Render 等 Linux 环境）
+    linux_font_paths = [
+        '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+        '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+    ]
+    
+    # macOS 字体路径
+    macos_font_paths = [
+        '/System/Library/Fonts/PingFang.ttc',
+        '/System/Library/Fonts/STHeiti Light.ttc',
+        '/System/Library/Fonts/Hiragino Sans GB.ttc',
+    ]
+    
+    # 合并所有路径
+    all_font_paths = windows_font_paths + linux_font_paths + macos_font_paths
+    
+    for font_path in all_font_paths:
         if os.path.exists(font_path):
             return font_path
     
     return None
 
+
+def download_font_if_needed():
+    """如果系统没有中文字体，下载一个备用字体"""
+    import urllib.request
+    import ssl
+    
+    # 创建字体目录
+    font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'fonts')
+    os.makedirs(font_dir, exist_ok=True)
+    
+    # 检查是否已有下载的字体
+    fallback_font = os.path.join(font_dir, 'wqy-zenhei.ttc')
+    if os.path.exists(fallback_font):
+        return fallback_font
+    
+    # 尝试下载文泉驿正黑字体（开源中文字体）
+    font_url = 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf'
+    
+    try:
+        # 创建 SSL 上下文（忽略证书验证）
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        # 下载字体
+        req = urllib.request.Request(font_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, context=ssl_context, timeout=30) as response:
+            with open(fallback_font, 'wb') as f:
+                f.write(response.read())
+        
+        return fallback_font
+    except Exception as e:
+        print(f"下载字体失败: {e}")
+        return None
+
 def register_chinese_font():
     """注册中文字体"""
+    # 首先尝试获取系统字体
     font_path = get_chinese_font()
+    
+    # 如果没有系统字体，尝试下载字体
+    if not font_path:
+        font_path = download_font_if_needed()
+    
     if font_path:
         try:
             pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
             return 'ChineseFont'
-        except:
-            pass
+        except Exception as e:
+            print(f"注册字体失败: {e}")
+    
+    # 如果都失败了，返回默认字体（会导致中文显示为方框）
     return 'Helvetica'
 
 def create_styles(font_name):
