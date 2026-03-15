@@ -5,6 +5,7 @@ PDF报告生成服务 - 使用ReportLab
 """
 
 import os
+import logging
 from datetime import datetime
 from io import BytesIO
 from reportlab.lib import colors
@@ -15,6 +16,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+
+logger = logging.getLogger(__name__)
 
 def get_chinese_font():
     """获取中文字体"""
@@ -32,6 +35,8 @@ def get_chinese_font():
         '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
         '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
         '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.otf',
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.otf',
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
         '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
     ]
@@ -46,9 +51,22 @@ def get_chinese_font():
     # 合并所有路径
     all_font_paths = windows_font_paths + linux_font_paths + macos_font_paths
     
+    logger.info(f"正在查找中文字体，检查 {len(all_font_paths)} 个路径...")
+    
     for font_path in all_font_paths:
         if os.path.exists(font_path):
+            logger.info(f"找到字体: {font_path}")
             return font_path
+    
+    # 列出系统中所有可用的字体文件（用于调试）
+    logger.warning("未找到中文字体，列出 /usr/share/fonts 目录:")
+    try:
+        for root, dirs, files in os.walk('/usr/share/fonts'):
+            for file in files:
+                if file.endswith(('.ttf', '.ttc', '.otf')):
+                    logger.warning(f"  可用字体: {os.path.join(root, file)}")
+    except Exception as e:
+        logger.error(f"列出字体目录失败: {e}")
     
     return None
 
