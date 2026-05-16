@@ -54,7 +54,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS analysis_records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 filename TEXT NOT NULL,
-                created_at TEXT NOT NULL,
+                source TEXT DEFAULT '录音文件',
                 customer_grade TEXT,
                 intention_level TEXT,
                 purchase_stage TEXT,
@@ -62,7 +62,8 @@ def init_db():
                 analysis_data TEXT,
                 tags TEXT,
                 speaker1_data TEXT,
-                speaker2_data TEXT
+                speaker2_data TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
@@ -99,6 +100,7 @@ def save_record(record):
     Args:
         record: dict 包含以下字段
             - filename: 文件名
+            - source: 来源 (默认'录音文件')
             - customer_grade: 客户等级 (A/B/C)
             - intention_level: 意向强度 (高/中/低)
             - purchase_stage: 购房阶段
@@ -121,10 +123,11 @@ def save_record(record):
         
         cursor.execute('''
             INSERT INTO analysis_records 
-            (filename, created_at, customer_grade, intention_level, purchase_stage, summary, analysis_data, tags, speaker1_data, speaker2_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (filename, source, created_at, customer_grade, intention_level, purchase_stage, summary, analysis_data, tags, speaker1_data, speaker2_data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             record.get('filename', ''),
+            record.get('source', '录音文件'),
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             record.get('customer_grade', ''),
             record.get('intention_level', ''),

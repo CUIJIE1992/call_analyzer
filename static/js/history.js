@@ -39,6 +39,7 @@ async function loadHistoryData() {
                 id: record.id,
                 time: record.created_at,
                 filename: record.filename,
+                source: record.source || '录音文件',
                 rating: record.customer_grade || 'C',
                 intention: mapIntentionLevel(record.intention_level),
                 stage: record.purchase_stage || '未知',
@@ -96,7 +97,7 @@ function bindEvents() {
 function showLoading() {
     const tbody = document.getElementById('historyTableBody');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">加载中...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">加载中...</td></tr>';
     }
 }
 
@@ -193,6 +194,7 @@ function renderTable() {
             </td>
             <td class="time-cell">${item.time}</td>
             <td class="filename-cell" title="${item.filename}">${item.filename}</td>
+            <td><span class="source-badge">${item.source}</span></td>
             <td>
                 <span class="rating-badge grade-${item.rating.toLowerCase().replace('类', '')}">
                     ${item.rating.replace('类', '')}级客户

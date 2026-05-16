@@ -179,6 +179,7 @@ def process_audio():
             
             record = {
                 'filename': original_filename,
+                'source': '录音文件',
                 'customer_grade': customer_grade,
                 'intention_level': intention_level,
                 'purchase_stage': purchase_stage,
@@ -261,6 +262,7 @@ def process_single_file(file_info, batch_id, file_index):
             
             record = {
                 'filename': original_filename,
+                'source': '录音文件',
                 'customer_grade': customer_grade,
                 'intention_level': intention_level,
                 'purchase_stage': purchase_stage,
@@ -465,6 +467,7 @@ def analyze_transcript():
             
             record = {
                 'filename': filename,
+                'source': '录音文本',
                 'customer_grade': customer_grade,
                 'intention_level': intention_level,
                 'purchase_stage': purchase_stage,
@@ -1049,6 +1052,7 @@ def get_task_status(task_id):
                 
                 record = {
                     'filename': task_info['audio_url'],
+                    'source': '录音链接',
                     'customer_grade': customer_grade,
                     'intention_level': intention_level,
                     'purchase_stage': purchase_stage,
