@@ -504,58 +504,49 @@ def parse_transcript(transcript):
     
     current_speaker = None
     current_text = []
+    current_timestamp = '00:00'
+    current_start_time = 0
+    
+    def time_to_seconds(t):
+        parts = t.split(':')
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        return 0
+    
+    def flush_current():
+        nonlocal current_text, current_timestamp, current_start_time
+        if current_speaker and current_text:
+            text = ' '.join(current_text)
+            item = {
+                'text': text,
+                'timestamp': current_timestamp,
+                'start_time': current_start_time
+            }
+            if current_speaker == 1:
+                speaker1_texts.append(item)
+            else:
+                speaker2_texts.append(item)
+            current_text = []
     
     for line in lines:
         line = line.strip()
         if not line:
-            if current_speaker and current_text:
-                text = ' '.join(current_text)
-                if current_speaker == 1:
-                    speaker1_texts.append({
-                        'text': text,
-                        'timestamp': '00:00'
-                    })
-                else:
-                    speaker2_texts.append({
-                        'text': text,
-                        'timestamp': '00:00'
-                    })
-                current_text = []
+            flush_current()
             continue
         
-        match = re.match(r'说话人\s*(\d+)\s+\d+:\d+', line)
+        match = re.match(r'说话人\s*(\d+)\s+(\d+:\d+)', line)
         if match:
-            if current_speaker and current_text:
-                text = ' '.join(current_text)
-                if current_speaker == 1:
-                    speaker1_texts.append({
-                        'text': text,
-                        'timestamp': '00:00'
-                    })
-                else:
-                    speaker2_texts.append({
-                        'text': text,
-                        'timestamp': '00:00'
-                    })
+            flush_current()
             
             current_speaker = int(match.group(1))
+            current_timestamp = match.group(2)
+            current_start_time = time_to_seconds(current_timestamp)
             current_text = []
         else:
             if current_speaker:
                 current_text.append(line)
     
-    if current_speaker and current_text:
-        text = ' '.join(current_text)
-        if current_speaker == 1:
-            speaker1_texts.append({
-                'text': text,
-                'timestamp': '00:00'
-            })
-        else:
-            speaker2_texts.append({
-                'text': text,
-                'timestamp': '00:00'
-            })
+    flush_current()
     
     return speaker1_texts, speaker2_texts
 
