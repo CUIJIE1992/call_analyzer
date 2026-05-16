@@ -1340,6 +1340,30 @@ function downloadResults() {
     showSuccess('报告已下载');
 }
 
+// 合并并排序两个说话人的消息（按时间顺序）
+function mergeMessagesByTime(speaker1, speaker2, role1, role2) {
+    const messages = [];
+    
+    if (Array.isArray(speaker1)) {
+        speaker1.forEach(item => {
+            const text = typeof item === 'object' ? item.text : item;
+            const start_time = typeof item === 'object' ? (item.start_time || 0) : 0;
+            messages.push({ speaker: role1, text: text, start_time: start_time });
+        });
+    }
+    
+    if (Array.isArray(speaker2)) {
+        speaker2.forEach(item => {
+            const text = typeof item === 'object' ? item.text : item;
+            const start_time = typeof item === 'object' ? (item.start_time || 0) : 0;
+            messages.push({ speaker: role2, text: text, start_time: start_time });
+        });
+    }
+    
+    messages.sort((a, b) => a.start_time - b.start_time);
+    return messages;
+}
+
 // 生成报告
 function generateReport() {
     let report = '购房电话分析报告\n';
@@ -1349,22 +1373,12 @@ function generateReport() {
     const role1 = analysis['角色识别'] ? analysis['角色识别']['说话人1'] : '置业顾问';
     const role2 = analysis['角色识别'] ? analysis['角色识别']['说话人2'] : '客户';
     
-    // 对话记录
-    report += `【${role1}】\n`;
-    if (Array.isArray(analysisResults.speaker1)) {
-        analysisResults.speaker1.forEach(item => {
-            const text = typeof item === 'object' ? item.text : item;
-            report += `${text || ''}\n`;
-        });
-    }
-    
-    report += `\n【${role2}】\n`;
-    if (Array.isArray(analysisResults.speaker2)) {
-        analysisResults.speaker2.forEach(item => {
-            const text = typeof item === 'object' ? item.text : item;
-            report += `${text || ''}\n`;
-        });
-    }
+    // 对话记录 - 按时间顺序交错展示
+    const messages = mergeMessagesByTime(analysisResults.speaker1, analysisResults.speaker2, role1, role2);
+    report += '【对话记录】\n';
+    messages.forEach(msg => {
+        report += `${msg.speaker}：${msg.text}\n`;
+    });
     
     report += '\n' + '='.repeat(50) + '\n';
     report += '购房电话分析结果\n';
@@ -2001,21 +2015,12 @@ function generateSingleReport(result) {
         const role1 = analysis['角色识别']['说话人1'] || '说话人 1';
         const role2 = analysis['角色识别']['说话人2'] || '说话人 2';
         
-        report += `【${role1}】\n`;
-        if (Array.isArray(result.speaker1)) {
-            result.speaker1.forEach(item => {
-                const text = typeof item === 'object' ? item.text : item;
-                report += `${text || ''}\n`;
-            });
-        }
-        
-        report += `\n【${role2}】\n`;
-        if (Array.isArray(result.speaker2)) {
-            result.speaker2.forEach(item => {
-                const text = typeof item === 'object' ? item.text : item;
-                report += `${text || ''}\n`;
-            });
-        }
+        // 对话记录 - 按时间顺序交错展示
+        const messages = mergeMessagesByTime(result.speaker1, result.speaker2, role1, role2);
+        report += '【对话记录】\n';
+        messages.forEach(msg => {
+            report += `${msg.speaker}：${msg.text}\n`;
+        });
     }
     
     report += '\n' + '─'.repeat(40) + '\n';
