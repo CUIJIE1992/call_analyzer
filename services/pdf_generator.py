@@ -277,14 +277,14 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
     story = []
     
     # 标题
-    story.append(Paragraph("🏠 购房电话分析报告", styles['ChineseTitle']))
+    story.append(Paragraph("购房电话分析报告", styles['ChineseTitle']))
     story.append(Paragraph("AI驱动的房产销售洞察与客户跟进策略", styles['ChineseSubtitle']))
     story.append(Paragraph(f"生成时间：{datetime.now().strftime('%Y年%m月%d日 %H:%M')}", styles['ChineseSubtitle']))
     story.append(Spacer(1, 25))
     
     # 通话概要
     if analysis.get('通话概要'):
-        story.append(create_section_table("📊 通话概要", styles))
+        story.append(create_section_table("通话概要", styles))
         story.append(Spacer(1, 10))
         
         overview = analysis['通话概要']
@@ -320,16 +320,16 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
     
     # 客户评级
     if analysis.get('客户评级'):
-        story.append(create_section_table("🏆 客户评级", styles))
+        story.append(create_section_table("客户评级", styles))
         story.append(Spacer(1, 10))
         
         rating = analysis['客户评级']
         
         rating_items = [
-            f"🎯 意向强度：{rating.get('购房意向强度', '-')}",
-            f"💰 购买力：{rating.get('购买力评估', '-')}",
-            f"⏱️ 决策周期：{rating.get('决策周期', '-')}",
-            f"🏆 综合评级：{rating.get('综合等级', '-')}"
+            f"意向强度：{rating.get('购房意向强度', '-')}",
+            f"购买力：{rating.get('购买力评估', '-')}",
+            f"决策周期：{rating.get('决策周期', '-')}",
+            f"综合评级：{rating.get('综合等级', '-')}"
         ]
         
         for item in rating_items:
@@ -340,7 +340,7 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
     
     # 购房意向
     if analysis.get('购房意向'):
-        story.append(create_section_table("🏠 购房意向分析", styles))
+        story.append(create_section_table("购房意向分析", styles))
         story.append(Spacer(1, 10))
         
         intention = analysis['购房意向']
@@ -376,7 +376,7 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
     
     # 购房阶段
     if analysis.get('购房阶段'):
-        story.append(create_section_table("📍 购房阶段识别", styles))
+        story.append(create_section_table("购房阶段识别", styles))
         story.append(Spacer(1, 10))
         
         stage = analysis['购房阶段']
@@ -385,20 +385,19 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
         story.append(Spacer(1, 20))
     
     # 核心关注点
-    if analysis.get('核心关注点'):
-        story.append(create_section_table("🎯 客户核心关注点", styles))
+    concerns = analysis.get('客户核心关注点') or analysis.get('核心关注点')
+    if concerns:
+        story.append(create_section_table("客户核心关注点", styles))
         story.append(Spacer(1, 10))
         
-        concerns = analysis['核心关注点']
-        
         if concerns.get('第一关注'):
-            story.append(Paragraph(f"<b>1️⃣ {concerns['第一关注'].get('因素', '-')}：</b>{concerns['第一关注'].get('具体内容', '')}", styles['ChineseBody']))
+            story.append(Paragraph(f"<b>1. {concerns['第一关注'].get('因素', '-')}：</b>{concerns['第一关注'].get('具体内容', '')}", styles['ChineseBody']))
         
         if concerns.get('第二关注'):
-            story.append(Paragraph(f"<b>2️⃣ {concerns['第二关注'].get('因素', '-')}：</b>{concerns['第二关注'].get('具体内容', '')}", styles['ChineseBody']))
+            story.append(Paragraph(f"<b>2. {concerns['第二关注'].get('因素', '-')}：</b>{concerns['第二关注'].get('具体内容', '')}", styles['ChineseBody']))
         
         if concerns.get('第三关注'):
-            story.append(Paragraph(f"<b>3️⃣ {concerns['第三关注'].get('因素', '-')}：</b>{concerns['第三关注'].get('具体内容', '')}", styles['ChineseBody']))
+            story.append(Paragraph(f"<b>3. {concerns['第三关注'].get('因素', '-')}：</b>{concerns['第三关注'].get('具体内容', '')}", styles['ChineseBody']))
         
         if concerns.get('其他关注'):
             story.append(Paragraph(f"<b>其他关注点：</b>{'、'.join(concerns['其他关注'])}", styles['ChineseBody']))
@@ -406,11 +405,10 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
         story.append(Spacer(1, 20))
     
     # 竞品分析
-    if analysis.get('竞品分析'):
-        story.append(create_section_table("⚖️ 竞品对比分析", styles))
+    competitor = analysis.get('竞品对比') or analysis.get('竞品分析')
+    if competitor:
+        story.append(create_section_table("竞品对比分析", styles))
         story.append(Spacer(1, 10))
-        
-        competitor = analysis['竞品分析']
         
         if competitor.get('提及竞品'):
             story.append(Paragraph(f"<b>提及竞品：</b>{'、'.join(competitor['提及竞品'])}", styles['ChineseBody']))
@@ -418,69 +416,40 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
         story.append(Paragraph(f"<b>对比倾向：</b>{competitor.get('对比倾向', '-')}", styles['ChineseBody']))
         
         if competitor.get('本项目优势'):
-            story.append(Paragraph("<b>✅ 本项目优势：</b>", styles['ChineseBody']))
+            story.append(Paragraph("<b>本项目优势：</b>", styles['ChineseBody']))
             for item in competitor['本项目优势']:
-                story.append(Paragraph(f"  • {item}", styles['ChineseBody']))
+                story.append(Paragraph(f"  - {item}", styles['ChineseBody']))
         
         if competitor.get('本项目劣势'):
-            story.append(Paragraph("<b>⚠️ 本项目劣势：</b>", styles['ChineseBody']))
+            story.append(Paragraph("<b>本项目劣势：</b>", styles['ChineseBody']))
             for item in competitor['本项目劣势']:
-                story.append(Paragraph(f"  • {item}", styles['ChineseBody']))
+                story.append(Paragraph(f"  - {item}", styles['ChineseBody']))
         
         story.append(Spacer(1, 20))
     
     # 情感分析
-    if analysis.get('情感分析'):
-        story.append(create_section_table("😊 情感与沟通分析", styles))
+    sentiment = analysis.get('情感与沟通') or analysis.get('情感分析')
+    if sentiment:
+        story.append(create_section_table("情感与沟通分析", styles))
         story.append(Spacer(1, 10))
-        
-        sentiment = analysis['情感分析']
         story.append(Paragraph(f"<b>客户态度：</b>{sentiment.get('客户态度', '-')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>置业顾问表现：</b>{sentiment.get('置业顾问表现', '-')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>沟通效果：</b>{sentiment.get('沟通效果', '-')}", styles['ChineseBody']))
         story.append(Spacer(1, 20))
     
     # 关键信息
-    if analysis.get('关键信息'):
-        story.append(create_section_table("🔑 关键信息提取", styles))
+    key_info = analysis.get('关键信息提取') or analysis.get('关键信息')
+    if key_info:
+        story.append(create_section_table("关键信息提取", styles))
         story.append(Spacer(1, 10))
-        
-        key_info = analysis['关键信息']
-        story.append(Paragraph(f"<b>📞 联系方式：</b>{key_info.get('联系方式', '暂无')}", styles['ChineseBody']))
-        story.append(Paragraph(f"<b>📅 看房安排：</b>{key_info.get('看房安排', '暂无')}", styles['ChineseBody']))
-        story.append(Paragraph(f"<b>📝 特殊需求：</b>{key_info.get('特殊需求', '暂无')}", styles['ChineseBody']))
-        story.append(Spacer(1, 20))
-    
-    # 跟进建议
-    if analysis.get('跟进建议'):
-        story.append(create_section_table("💡 跟进策略建议", styles))
-        story.append(Spacer(1, 10))
-        
-        followup = analysis['跟进建议']
-        
-        if followup.get('推荐话术'):
-            story.append(Paragraph("<b>💬 推荐话术要点：</b>", styles['ChineseBody']))
-            for item in followup['推荐话术']:
-                story.append(Paragraph(f"  • {item}", styles['ChineseBody']))
-        
-        if followup.get('卖点强调'):
-            story.append(Paragraph("<b>⭐ 差异化卖点强调：</b>", styles['ChineseBody']))
-            for item in followup['卖点强调']:
-                story.append(Paragraph(f"  • {item}", styles['ChineseBody']))
-        
-        if followup.get('异议处理'):
-            story.append(Paragraph("<b>🛡️ 异议处理建议：</b>", styles['ChineseBody']))
-            for item in followup['异议处理']:
-                story.append(Paragraph(f"  • {item}", styles['ChineseBody']))
-        
-        if followup.get('下一步计划'):
-            story.append(Paragraph(f"<b>📋 下一步跟进计划：</b>{followup['下一步计划']}", styles['ChineseBody']))
-        
+        story.append(Paragraph(f"<b>联系方式：</b>{key_info.get('联系方式', '暂无')}", styles['ChineseBody']))
+        story.append(Paragraph(f"<b>看房安排：</b>{key_info.get('看房安排', '暂无')}", styles['ChineseBody']))
+        story.append(Paragraph(f"<b>特殊需求：</b>{key_info.get('特殊需求', '暂无')}", styles['ChineseBody']))
         story.append(Spacer(1, 20))
     
     # 总结
     if analysis.get('总结'):
-        story.append(create_section_table("✅ 分析总结", styles))
+        story.append(create_section_table("分析总结", styles))
         story.append(Spacer(1, 10))
         story.append(Paragraph(analysis['总结'], styles['ChineseSummary']))
         story.append(Spacer(1, 20))
@@ -488,7 +457,7 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
     # 对话记录
     if speaker1 or speaker2:
         story.append(PageBreak())
-        story.append(create_section_table("💬 对话记录", styles))
+        story.append(create_section_table("对话记录", styles))
         story.append(Spacer(1, 15))
         
         role1 = analysis.get('角色识别', {}).get('说话人1', '置业顾问')

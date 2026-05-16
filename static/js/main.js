@@ -1419,76 +1419,59 @@ function generateReport() {
     }
     
     // 核心关注点
-    if (analysis['核心关注点']) {
+    const concerns = analysis['客户核心关注点'] || analysis['核心关注点'];
+    if (concerns) {
         report += '【客户核心关注点】\n';
-        if (analysis['核心关注点']['第一关注']) {
-            report += `  1. ${analysis['核心关注点']['第一关注']['因素']}: ${analysis['核心关注点']['第一关注']['具体内容']}\n`;
+        if (concerns['第一关注']) {
+            report += `  1. ${concerns['第一关注']['因素']}: ${concerns['第一关注']['具体内容']}\n`;
         }
-        if (analysis['核心关注点']['第二关注']) {
-            report += `  2. ${analysis['核心关注点']['第二关注']['因素']}: ${analysis['核心关注点']['第二关注']['具体内容']}\n`;
+        if (concerns['第二关注']) {
+            report += `  2. ${concerns['第二关注']['因素']}: ${concerns['第二关注']['具体内容']}\n`;
         }
-        if (analysis['核心关注点']['第三关注']) {
-            report += `  3. ${analysis['核心关注点']['第三关注']['因素']}: ${analysis['核心关注点']['第三关注']['具体内容']}\n`;
+        if (concerns['第三关注']) {
+            report += `  3. ${concerns['第三关注']['因素']}: ${concerns['第三关注']['具体内容']}\n`;
         }
-        if (analysis['核心关注点']['其他关注'] && analysis['核心关注点']['其他关注'].length > 0) {
-            report += `  其他: ${analysis['核心关注点']['其他关注'].join('、')}\n`;
+        if (concerns['其他关注'] && concerns['其他关注'].length > 0) {
+            report += `  其他: ${concerns['其他关注'].join('、')}\n`;
         }
         report += '\n';
     }
     
     // 竞品分析
-    if (analysis['竞品分析']) {
+    const competitor = analysis['竞品对比'] || analysis['竞品分析'];
+    if (competitor) {
         report += '【竞品对比分析】\n';
-        if (analysis['竞品分析']['提及竞品'] && analysis['竞品分析']['提及竞品'].length > 0) {
-            report += `  提及竞品: ${analysis['竞品分析']['提及竞品'].join('、')}\n`;
+        if (competitor['提及竞品'] && competitor['提及竞品'].length > 0) {
+            report += `  提及竞品: ${competitor['提及竞品'].join('、')}\n`;
         }
-        report += `  对比倾向: ${analysis['竞品分析']['对比倾向'] || '-'}\n`;
-        if (analysis['竞品分析']['本项目优势'] && analysis['竞品分析']['本项目优势'].length > 0) {
+        report += `  对比倾向: ${competitor['对比倾向'] || '-'}\n`;
+        if (competitor['本项目优势'] && competitor['本项目优势'].length > 0) {
             report += `  本项目优势:\n`;
-            analysis['竞品分析']['本项目优势'].forEach(a => report += `    ✓ ${a}\n`);
+            competitor['本项目优势'].forEach(a => report += `    ✓ ${a}\n`);
         }
-        if (analysis['竞品分析']['本项目劣势'] && analysis['竞品分析']['本项目劣势'].length > 0) {
+        if (competitor['本项目劣势'] && competitor['本项目劣势'].length > 0) {
             report += `  本项目劣势:\n`;
-            analysis['竞品分析']['本项目劣势'].forEach(d => report += `    ✗ ${d}\n`);
+            competitor['本项目劣势'].forEach(d => report += `    ✗ ${d}\n`);
         }
         report += '\n';
     }
     
     // 情感分析
-    if (analysis['情感分析']) {
+    const sentiment = analysis['情感与沟通'] || analysis['情感分析'];
+    if (sentiment) {
         report += '【情感与沟通分析】\n';
-        report += `  客户态度: ${analysis['情感分析']['客户态度'] || '-'}\n`;
-        report += `  置业顾问表现: ${analysis['情感分析']['置业顾问表现'] || '-'}\n`;
-        report += `  沟通效果: ${analysis['情感分析']['沟通效果'] || '-'}\n\n`;
+        report += `  客户态度: ${sentiment['客户态度'] || '-'}\n`;
+        report += `  置业顾问表现: ${sentiment['置业顾问表现'] || '-'}\n`;
+        report += `  沟通效果: ${sentiment['沟通效果'] || '-'}\n\n`;
     }
     
     // 关键信息
-    if (analysis['关键信息']) {
+    const keyInfo = analysis['关键信息提取'] || analysis['关键信息'];
+    if (keyInfo) {
         report += '【关键信息】\n';
-        report += `  联系方式: ${analysis['关键信息']['联系方式'] || '暂无'}\n`;
-        report += `  看房安排: ${analysis['关键信息']['看房安排'] || '暂无'}\n`;
-        report += `  特殊需求: ${analysis['关键信息']['特殊需求'] || '暂无'}\n\n`;
-    }
-    
-    // 跟进建议
-    if (analysis['跟进建议']) {
-        report += '【跟进策略建议】\n';
-        if (analysis['跟进建议']['推荐话术'] && analysis['跟进建议']['推荐话术'].length > 0) {
-            report += `  推荐话术要点:\n`;
-            analysis['跟进建议']['推荐话术'].forEach(s => report += `    • ${s}\n`);
-        }
-        if (analysis['跟进建议']['卖点强调'] && analysis['跟进建议']['卖点强调'].length > 0) {
-            report += `  差异化卖点强调:\n`;
-            analysis['跟进建议']['卖点强调'].forEach(s => report += `    • ${s}\n`);
-        }
-        if (analysis['跟进建议']['异议处理'] && analysis['跟进建议']['异议处理'].length > 0) {
-            report += `  异议处理建议:\n`;
-            analysis['跟进建议']['异议处理'].forEach(s => report += `    • ${s}\n`);
-        }
-        if (analysis['跟进建议']['下一步计划']) {
-            report += `  下一步计划: ${analysis['跟进建议']['下一步计划']}\n`;
-        }
-        report += '\n';
+        report += `  联系方式: ${keyInfo['联系方式'] || '暂无'}\n`;
+        report += `  看房安排: ${keyInfo['看房安排'] || '暂无'}\n`;
+        report += `  特殊需求: ${keyInfo['特殊需求'] || '暂无'}\n\n`;
     }
     
     // 总结
@@ -2030,7 +2013,10 @@ function generateSingleReport(result) {
     if (analysis['客户评级']) {
         report += `\n【客户评级】\n`;
         report += `  购房意向强度: ${analysis['客户评级']['购房意向强度'] || '-'}\n`;
+        report += `  购买力评估: ${analysis['客户评级']['购买力评估'] || '-'}\n`;
+        report += `  决策周期: ${analysis['客户评级']['决策周期'] || '-'}\n`;
         report += `  综合等级: ${analysis['客户评级']['综合等级'] || '-'}\n`;
+        report += `  等级说明: ${analysis['客户评级']['等级说明'] || '-'}\n`;
     }
     
     if (analysis['购房意向']) {
@@ -2038,6 +2024,53 @@ function generateSingleReport(result) {
         report += `  面积需求: ${analysis['购房意向']['面积需求'] || '未提及'}\n`;
         report += `  价格区间: ${analysis['购房意向']['价格区间'] || '未提及'}\n`;
         report += `  区域偏好: ${analysis['购房意向']['区域偏好'] || '未提及'}\n`;
+        report += `  户型需求: ${analysis['购房意向']['户型需求'] || '未提及'}\n`;
+    }
+    
+    const stage = analysis['购房阶段'];
+    if (stage) {
+        report += `\n【购房阶段】\n`;
+        report += `  当前阶段: ${stage['当前阶段'] || '-'}\n`;
+        report += `  阶段特征: ${stage['阶段特征'] || '-'}\n`;
+    }
+    
+    const concerns = analysis['客户核心关注点'] || analysis['核心关注点'];
+    if (concerns) {
+        report += '\n【客户核心关注点】\n';
+        if (concerns['第一关注']) {
+            report += `  1. ${concerns['第一关注']['因素']}: ${concerns['第一关注']['具体内容']}\n`;
+        }
+        if (concerns['第二关注']) {
+            report += `  2. ${concerns['第二关注']['因素']}: ${concerns['第二关注']['具体内容']}\n`;
+        }
+        if (concerns['第三关注']) {
+            report += `  3. ${concerns['第三关注']['因素']}: ${concerns['第三关注']['具体内容']}\n`;
+        }
+    }
+    
+    const competitor = analysis['竞品对比'] || analysis['竞品分析'];
+    if (competitor) {
+        report += '\n【竞品对比分析】\n';
+        if (competitor['提及竞品'] && competitor['提及竞品'].length > 0) {
+            report += `  提及竞品: ${competitor['提及竞品'].join('、')}\n`;
+        }
+        report += `  对比倾向: ${competitor['对比倾向'] || '-'}\n`;
+    }
+    
+    const sentiment = analysis['情感与沟通'] || analysis['情感分析'];
+    if (sentiment) {
+        report += `\n【情感与沟通分析】\n`;
+        report += `  客户态度: ${sentiment['客户态度'] || '-'}\n`;
+        report += `  置业顾问表现: ${sentiment['置业顾问表现'] || '-'}\n`;
+        report += `  沟通效果: ${sentiment['沟通效果'] || '-'}\n`;
+    }
+    
+    const keyInfo = analysis['关键信息提取'] || analysis['关键信息'];
+    if (keyInfo) {
+        report += '\n【关键信息】\n';
+        report += `  联系方式: ${keyInfo['联系方式'] || '暂无'}\n`;
+        report += `  看房安排: ${keyInfo['看房安排'] || '暂无'}\n`;
+        report += `  特殊需求: ${keyInfo['特殊需求'] || '暂无'}\n`;
     }
     
     if (analysis['总结']) {
