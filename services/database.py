@@ -78,6 +78,8 @@ def init_db():
                 cursor.execute('ALTER TABLE analysis_records ADD COLUMN speaker1_data TEXT')
             if 'speaker2_data' not in columns:
                 cursor.execute('ALTER TABLE analysis_records ADD COLUMN speaker2_data TEXT')
+            if 'source' not in columns:
+                cursor.execute("ALTER TABLE analysis_records ADD COLUMN source TEXT DEFAULT '录音文件'")
         except:
             pass
         

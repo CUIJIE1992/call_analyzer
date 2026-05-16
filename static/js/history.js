@@ -97,7 +97,7 @@ function bindEvents() {
 function showLoading() {
     const tbody = document.getElementById('historyTableBody');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">加载中...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">加载中...</td></tr>';
     }
 }
 
@@ -193,11 +193,11 @@ function renderTable() {
                        onchange="handleSelectItem(${item.id}, this.checked)">
             </td>
             <td class="time-cell">${item.time}</td>
-            <td class="filename-cell" title="${item.filename}">${item.filename}</td>
-            <td><span class="source-badge">${item.source}</span></td>
+            <td class="filename-cell" title="${item.filename}" onclick="viewDetail(${item.id})">${item.filename}</td>
+            <td><span class="source-badge ${getSourceClass(item.source)}">${item.source}</span></td>
             <td>
                 <span class="rating-badge grade-${item.rating.toLowerCase().replace('类', '')}">
-                    ${item.rating.replace('类', '')}级客户
+                    ${item.rating.replace('类', '')}
                 </span>
             </td>
             <td>
@@ -206,16 +206,10 @@ function renderTable() {
                 </span>
             </td>
             <td>
-                <span class="stage-badge">${item.stage}</span>
+                <span class="stage-badge stage-single">${item.stage}</span>
             </td>
             <td class="tags-cell">
-                ${item.tags.map(tag => `<span class="tag-item">${tag}</span>`).join('')}
-            </td>
-            <td>
-                <div class="action-btns">
-                    <button class="action-btn view" onclick="viewDetail(${item.id})">查看</button>
-                    <button class="action-btn delete" onclick="handleDelete(${item.id})">删除</button>
-                </div>
+                ${filterTags(item.tags).map(tag => `<span class="tag-item ${getTagClass(tag)}">${tag}</span>`).join('')}
             </td>
         </tr>
     `).join('');
@@ -223,11 +217,31 @@ function renderTable() {
 
 function getIntentionText(intention) {
     const map = {
-        'high': '高意向',
-        'medium': '中意向',
-        'low': '低意向'
+        'high': '高',
+        'medium': '中',
+        'low': '低'
     };
     return map[intention] || intention;
+}
+
+function getSourceClass(source) {
+    if (source === '录音文件') return 'source-file';
+    if (source === '录音链接') return 'source-url';
+    if (source === '录音文本') return 'source-text';
+    return 'source-file';
+}
+
+function getTagClass(tag) {
+    if (['已到访客户', '预约到访', '有意向到访'].includes(tag)) return 'tag-visit';
+    if (tag === '已留联系方式') return 'tag-contact';
+    if (['学区关注', '交通关注'].includes(tag)) return 'tag-interest';
+    if (['改善型需求', '刚需客户', '决策期客户'].includes(tag)) return 'tag-need';
+    return '';
+}
+
+function filterTags(tags) {
+    const redundant = ['高意向客户', '中意向客户', '低意向客户', 'A类优质客户'];
+    return tags.filter(tag => !redundant.includes(tag));
 }
 
 function updatePagination() {

@@ -93,7 +93,7 @@
         }
         .data-table th,
         .data-table td {
-            padding: 15px 20px;
+            padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #f0f0f0;
         }
@@ -101,9 +101,9 @@
             background: var(--bg-light);
             font-weight: 600;
             color: var(--text-secondary);
-            font-size: 0.9em;
+            font-size: 0.85em;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
         .data-table tbody tr {
             transition: all 0.3s ease;
@@ -127,23 +127,31 @@
         }
         .time-cell {
             color: var(--text-secondary);
-            font-size: 0.9em;
+            font-size: 0.85em;
             white-space: nowrap;
         }
         .filename-cell {
-            max-width: 200px;
+            max-width: 180px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
             font-weight: 500;
+            font-size: 0.92em;
+            cursor: pointer;
+            color: var(--primary-color);
+            transition: color 0.2s;
+        }
+        .filename-cell:hover {
+            color: #1d4ed8;
+            text-decoration: underline;
         }
         .rating-badge {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.85em;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.82em;
             font-weight: 600;
         }
         .rating-badge.grade-a {
@@ -161,10 +169,10 @@
         .intention-badge {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.85em;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.82em;
             font-weight: 600;
         }
         .intention-badge.high {
@@ -181,45 +189,73 @@
         }
         .stage-badge {
             display: inline-block;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.85em;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.82em;
             background: #e0e7ff;
             color: var(--primary-color);
             font-weight: 500;
         }
+        .stage-badge.stage-single {
+            white-space: nowrap;
+        }
         .source-badge {
             display: inline-block;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.85em;
-            background: #f0fdf4;
-            color: #16a34a;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.82em;
             font-weight: 500;
             white-space: nowrap;
         }
+        .source-badge.source-file {
+            background: #e0f2fe;
+            color: #0284c7;
+        }
+        .source-badge.source-url {
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+        .source-badge.source-text {
+            background: #fef3c7;
+            color: #d97706;
+        }
         .tags-cell {
-            max-width: 200px;
+            max-width: 220px;
         }
         .tag-item {
             display: inline-block;
-            padding: 3px 10px;
-            background: var(--bg-light);
-            border-radius: 12px;
-            font-size: 0.8em;
-            color: var(--text-secondary);
-            margin: 2px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.78em;
+            margin: 1px;
+            line-height: 1.6;
+        }
+        .tag-item.tag-visit {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        .tag-item.tag-contact {
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+        .tag-item.tag-interest {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .tag-item.tag-need {
+            background: #dbeafe;
+            color: #2563eb;
         }
         .action-btns {
             display: flex;
-            gap: 8px;
+            gap: 5px;
         }
         .action-btn {
-            padding: 6px 12px;
+            padding: 4px 10px;
             border: none;
             border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.85em;
+            font-size: 0.82em;
             transition: all 0.3s ease;
         }
         .action-btn.view {
@@ -554,7 +590,6 @@
                             <th>意向强度</th>
                             <th>购房阶段</th>
                             <th>标签</th>
-                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody">

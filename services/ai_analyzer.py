@@ -276,7 +276,7 @@ class AIAnalyzer:
         rating = analysis.get('客户评级', {})
         stage = analysis.get('购房阶段', {})
         concerns = analysis.get('客户核心关注点', {})
-        key_info = analysis.get('关键信息提取', {}) or analysis.get('关键信息', {})
+        key_info = analysis.get('关键信息提取') or analysis.get('关键信息') or {}
         
         intention = rating.get('购房意向强度', '')
         if intention == '高':
