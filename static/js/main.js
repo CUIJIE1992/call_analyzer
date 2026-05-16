@@ -14,6 +14,7 @@ let uploadArea, fileInput, selectBtn, filePreview, fileName, fileSize, removeBtn
 let progressSection, progressFill, progressText, progressPercent;
 let resultsSection, errorMessage, errorText;
 let textSection, transcriptInput, charCount, analyzeTextBtn;
+let txtFileInput, clearTextBtn;
 let urlSection, urlInput, processUrlBtn;
 
 // 批量上传DOM元素
@@ -42,6 +43,8 @@ document.addEventListener('DOMContentLoaded', function() {
     transcriptInput = document.getElementById('transcriptInput');
     charCount = document.getElementById('charCount');
     analyzeTextBtn = document.getElementById('analyzeTextBtn');
+    txtFileInput = document.getElementById('txtFileInput');
+    clearTextBtn = document.getElementById('clearTextBtn');
     urlSection = document.getElementById('urlSection');
     urlInput = document.getElementById('urlInput');
     processUrlBtn = document.getElementById('processUrlBtn');
@@ -272,6 +275,46 @@ function initTextInput() {
             analyzeTranscript();
         });
     }
+
+    if (txtFileInput) {
+        txtFileInput.addEventListener('change', handleTxtFileUpload);
+    }
+
+    if (clearTextBtn) {
+        clearTextBtn.addEventListener('click', clearTranscriptText);
+    }
+}
+
+function clearTranscriptText() {
+    if (transcriptInput) {
+        transcriptInput.value = '';
+        if (charCount) {
+            charCount.textContent = '0 字符';
+        }
+        if (txtFileInput) {
+            txtFileInput.value = '';
+        }
+    }
+}
+
+function handleTxtFileUpload() {
+    const file = txtFileInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const startIndex = text.indexOf('说话人');
+        if (startIndex !== -1) {
+            transcriptInput.value = text.substring(startIndex).trim();
+        } else {
+            transcriptInput.value = text.trim();
+        }
+        if (charCount) {
+            charCount.textContent = transcriptInput.value.length + ' 字符';
+        }
+    };
+    reader.readAsText(file, 'UTF-8');
 }
 
 // 分析转录文本
@@ -1165,6 +1208,7 @@ function displayKeyInfo(keyInfo) {
     
     const items = [
         { label: '📞 联系方式', value: keyInfo['联系方式'] },
+        { label: '🏠 到访意向', value: keyInfo['到访意向'] },
         { label: '📅 看房安排', value: keyInfo['看房安排'] },
         { label: '📝 特殊需求', value: keyInfo['特殊需求'] }
     ];
@@ -1470,6 +1514,7 @@ function generateReport() {
     if (keyInfo) {
         report += '【关键信息】\n';
         report += `  联系方式: ${keyInfo['联系方式'] || '暂无'}\n`;
+        report += `  到访意向: ${keyInfo['到访意向'] || '暂无'}\n`;
         report += `  看房安排: ${keyInfo['看房安排'] || '暂无'}\n`;
         report += `  特殊需求: ${keyInfo['特殊需求'] || '暂无'}\n\n`;
     }
@@ -1629,6 +1674,7 @@ function resetApp() {
     } else if (currentMode === 'text') {
         if (transcriptInput) transcriptInput.value = '';
         if (charCount) charCount.textContent = '0 字符';
+        if (txtFileInput) txtFileInput.value = '';
     }
     
     // 隐藏结果和进度区域
@@ -2069,6 +2115,7 @@ function generateSingleReport(result) {
     if (keyInfo) {
         report += '\n【关键信息】\n';
         report += `  联系方式: ${keyInfo['联系方式'] || '暂无'}\n`;
+        report += `  到访意向: ${keyInfo['到访意向'] || '暂无'}\n`;
         report += `  看房安排: ${keyInfo['看房安排'] || '暂无'}\n`;
         report += `  特殊需求: ${keyInfo['特殊需求'] || '暂无'}\n`;
     }

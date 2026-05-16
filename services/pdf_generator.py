@@ -443,6 +443,7 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
         story.append(create_section_table("关键信息提取", styles))
         story.append(Spacer(1, 10))
         story.append(Paragraph(f"<b>联系方式：</b>{key_info.get('联系方式', '暂无')}", styles['ChineseBody']))
+        story.append(Paragraph(f"<b>到访意向：</b>{key_info.get('到访意向', '暂无')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>看房安排：</b>{key_info.get('看房安排', '暂无')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>特殊需求：</b>{key_info.get('特殊需求', '暂无')}", styles['ChineseBody']))
         story.append(Spacer(1, 20))

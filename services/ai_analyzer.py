@@ -83,7 +83,7 @@ class AIAnalyzer:
         "本项目劣势": ["劣势1", "劣势2"]
     }},
     "客户评级": {{
-        "购房意向强度": "高/中/低",
+        "购房意向强度": "高/中/低（注意：客户已到访、预约到访、主动留电话或加微信等行为表明意向较高，不只看谈论的楼盘信息）",
         "购买力评估": "高/中/低",
         "决策周期": "短期（1个月内）/中期（1-3个月）/长期（3个月以上）",
         "综合等级": "A类/B类/C类",
@@ -96,6 +96,7 @@ class AIAnalyzer:
     }},
     "关键信息提取": {{
         "联系方式": "如有则填，否则填'暂无'",
+        "到访意向": "根据对话判断客户的到访情况，填'已到访'/'预约到访'/'有意向到访'/'暂无到访意向'",
         "看房安排": "如有则填，否则填'暂无'",
         "特殊需求": "如有则填，否则填'暂无'"
     }},
@@ -275,6 +276,7 @@ class AIAnalyzer:
         rating = analysis.get('客户评级', {})
         stage = analysis.get('购房阶段', {})
         concerns = analysis.get('客户核心关注点', {})
+        key_info = analysis.get('关键信息提取', {}) or analysis.get('关键信息', {})
         
         intention = rating.get('购房意向强度', '')
         if intention == '高':
@@ -287,6 +289,32 @@ class AIAnalyzer:
         grade = rating.get('综合等级', '')
         if grade and ('A' in grade or 'a' in grade):
             tags.append('A类优质客户')
+        
+        visit_intent = key_info.get('到访意向', '')
+        if visit_intent == '已到访':
+            tags.append('已到访客户')
+            if '高意向客户' not in tags:
+                tags.append('高意向客户')
+                if '低意向客户' in tags:
+                    tags.remove('低意向客户')
+        elif visit_intent == '预约到访':
+            tags.append('预约到访')
+            if '高意向客户' not in tags and '中意向客户' not in tags:
+                tags.append('高意向客户')
+                if '低意向客户' in tags:
+                    tags.remove('低意向客户')
+        elif visit_intent == '有意向到访':
+            tags.append('有意向到访')
+            if '低意向客户' in tags and '高意向客户' not in tags and '中意向客户' not in tags:
+                tags.append('中意向客户')
+                tags.remove('低意向客户')
+        
+        contact = key_info.get('联系方式', '')
+        if contact and contact != '暂无' and '无意向' not in visit_intent:
+            tags.append('已留联系方式')
+            if '低意向客户' in tags and '高意向客户' not in tags and '中意向客户' not in tags:
+                tags.append('中意向客户')
+                tags.remove('低意向客户')
         
         first_concern = concerns.get('第一关注', {})
         second_concern = concerns.get('第二关注', {})

@@ -1075,6 +1075,12 @@ body {
     font-size: 0.85em;
 }
 
+.footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .transcript-textarea {
     width: 100%;
     min-height: 180px;
@@ -1239,6 +1245,18 @@ body {
         flex-direction: column;
         gap: 15px;
         align-items: stretch;
+    }
+
+    .footer-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .footer-actions .btn-secondary,
+    .footer-actions .btn-ghost,
+    .footer-actions .btn-primary {
+        width: 100%;
+        justify-content: center;
     }
 }
 

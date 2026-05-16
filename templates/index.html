@@ -217,10 +217,19 @@
 单价多少钱？"></textarea>
                 <div class="text-input-footer">
                     <span class="char-count" id="charCount">0 字符</span>
-                    <button class="btn btn-primary btn-large" id="analyzeTextBtn">
-                        <span class="btn-icon">🔍</span>
-                        <span>开始分析</span>
-                    </button>
+                    <div class="footer-actions">
+                        <label class="btn btn-secondary" for="txtFileInput">
+                            <span>📄</span> 上传文件
+                        </label>
+                        <input type="file" id="txtFileInput" accept=".txt" style="display:none;">
+                        <button class="btn btn-ghost" id="clearTextBtn">
+                            <span>🗑️</span> 清空文本
+                        </button>
+                        <button class="btn btn-primary btn-large" id="analyzeTextBtn">
+                            <span class="btn-icon">🔍</span>
+                            <span>开始分析</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
