@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 batch_processes = {}
 batch_lock = threading.Lock()
 
+# 存储长音频任务
+long_audio_tasks = {}
+long_audio_lock = threading.Lock()
+
 # 加载环境变量
 load_dotenv()
 
@@ -137,14 +141,19 @@ def process_audio():
         return jsonify({'error': '文件不存在'}), 404
     
     try:
-        # 步骤1: 音频处理和语音分离
-        processor = AudioProcessor(filepath)
-        separated_audio = processor.separate_speakers()
-        
-        # 步骤2: 语音转文本
+        # 步骤1: 语音转文本（火山引擎已内置说话人分离）
         transcriber = SpeechToText()
-        speaker1_text = transcriber.transcribe(separated_audio['speaker1'])
-        speaker2_text = transcriber.transcribe(separated_audio['speaker2'])
+        all_text = transcriber.transcribe(filepath)
+        
+        # 直接根据API返回的speaker_id分配给说话人
+        speaker1_text = []
+        speaker2_text = []
+        for item in all_text:
+            speaker_id = item.get('speaker_id', 1)
+            if speaker_id == 1:
+                speaker1_text.append(item)
+            else:
+                speaker2_text.append(item)
         
         # 步骤3: AI分析
         analyzer = AIAnalyzer()
@@ -156,10 +165,10 @@ def process_audio():
             tags = analyzer.generate_customer_tags(analysis_result)
             
             # 提取关键信息
-            summary = analysis_result.get('总结', {}).get('summary', '') if isinstance(analysis_result.get('总结'), dict) else ''
-            customer_grade = analysis_result.get('客户评级', {}).get('grade', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
-            intention_level = analysis_result.get('购房意向', {}).get('intention', '') if isinstance(analysis_result.get('购房意向'), dict) else ''
-            purchase_stage = analysis_result.get('购房阶段', {}).get('stage', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
+            summary = analysis_result.get('总结', '') if isinstance(analysis_result.get('总结'), str) else ''
+            customer_grade = analysis_result.get('客户评级', {}).get('综合等级', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
+            intention_level = analysis_result.get('客户评级', {}).get('购房意向强度', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
+            purchase_stage = analysis_result.get('购房阶段', {}).get('当前阶段', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
             
             # 提取原始文件名（去掉 file_id 前缀）
             original_filename = filename
@@ -219,12 +228,19 @@ def process_single_file(file_info, batch_id, file_index):
     }
     
     try:
-        processor = AudioProcessor(filepath)
-        separated_audio = processor.separate_speakers()
-        
+        # 语音转文本（火山引擎已内置说话人分离）
         transcriber = SpeechToText()
-        speaker1_text = transcriber.transcribe(separated_audio['speaker1'])
-        speaker2_text = transcriber.transcribe(separated_audio['speaker2'])
+        all_text = transcriber.transcribe(filepath)
+        
+        # 直接根据API返回的speaker_id分配给说话人
+        speaker1_text = []
+        speaker2_text = []
+        for item in all_text:
+            speaker_id = item.get('speaker_id', 1)
+            if speaker_id == 1:
+                speaker1_text.append(item)
+            else:
+                speaker2_text.append(item)
         
         analyzer = AIAnalyzer()
         analysis_result = analyzer.analyze_conversation(speaker1_text, speaker2_text)
@@ -238,10 +254,10 @@ def process_single_file(file_info, batch_id, file_index):
         try:
             tags = analyzer.generate_customer_tags(analysis_result)
             
-            summary = analysis_result.get('总结', {}).get('summary', '') if isinstance(analysis_result.get('总结'), dict) else ''
-            customer_grade = analysis_result.get('客户评级', {}).get('grade', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
-            intention_level = analysis_result.get('购房意向', {}).get('intention', '') if isinstance(analysis_result.get('购房意向'), dict) else ''
-            purchase_stage = analysis_result.get('购房阶段', {}).get('stage', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
+            summary = analysis_result.get('总结', '') if isinstance(analysis_result.get('总结'), str) else ''
+            customer_grade = analysis_result.get('客户评级', {}).get('综合等级', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
+            intention_level = analysis_result.get('客户评级', {}).get('购房意向强度', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
+            purchase_stage = analysis_result.get('购房阶段', {}).get('当前阶段', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
             
             record = {
                 'filename': original_filename,
@@ -950,6 +966,149 @@ def get_concerns_ranking():
         
     except Exception as e:
         return jsonify({'error': f'获取关注点排行失败: {str(e)}'}), 500
+
+
+@app.route('/api/process-url', methods=['POST'])
+def process_audio_url():
+    """处理音频URL（使用火山引擎长音频API）"""
+    data = request.json
+    audio_url = data.get('url')
+    
+    if not audio_url:
+        return jsonify({'error': '缺少音频URL'}), 400
+    
+    try:
+        from services.speech_to_text import SpeechToText
+        
+        # 生成内部任务ID
+        internal_task_id = str(uuid.uuid4())
+        
+        # 提交火山引擎任务
+        transcriber = SpeechToText()
+        volc_task_id = transcriber.transcribe_from_url(audio_url)
+        
+        # 存储任务信息
+        with long_audio_lock:
+            long_audio_tasks[internal_task_id] = {
+                'volc_task_id': volc_task_id,
+                'audio_url': audio_url,
+                'status': 'submitted',
+                'created_at': datetime.now().isoformat()
+            }
+        
+        logger.info(f'音频URL任务提交成功，内部ID: {internal_task_id}, 火山引擎ID: {volc_task_id}')
+        
+        return jsonify({
+            'success': True,
+            'task_id': internal_task_id
+        })
+        
+    except Exception as e:
+        logger.error(f'处理音频URL失败: {str(e)}')
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': f'处理失败: {str(e)}'}), 500
+
+
+@app.route('/api/task-status/<task_id>', methods=['GET'])
+def get_task_status(task_id):
+    """查询长音频任务状态"""
+    try:
+        from services.speech_to_text import SpeechToText
+        from services.ai_analyzer import AIAnalyzer
+        
+        with long_audio_lock:
+            task_info = long_audio_tasks.get(task_id)
+        
+        if not task_info:
+            return jsonify({'error': '任务不存在'}), 404
+        
+        transcriber = SpeechToText()
+        volc_task_id = task_info['volc_task_id']
+        
+        # 查询火山引擎任务状态
+        result = transcriber.get_task_result(volc_task_id)
+        
+        if result['status'] == 'success':
+            # 任务完成，进行AI分析
+            all_text = transcriber._format_volc_result(result['result'])
+            
+            # 根据speaker_id分配给说话人
+            speaker1_text = []
+            speaker2_text = []
+            for item in all_text:
+                speaker_id = item.get('speaker_id', 1)
+                if speaker_id == 1:
+                    speaker1_text.append(item)
+                else:
+                    speaker2_text.append(item)
+            
+            # AI分析
+            analyzer = AIAnalyzer()
+            analysis_result = analyzer.analyze_conversation(speaker1_text, speaker2_text)
+            
+            # 保存分析记录
+            try:
+                tags = analyzer.generate_customer_tags(analysis_result)
+                
+                summary = analysis_result.get('总结', '') if isinstance(analysis_result.get('总结'), str) else ''
+                customer_grade = analysis_result.get('客户评级', {}).get('综合等级', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
+                intention_level = analysis_result.get('客户评级', {}).get('购房意向强度', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
+                purchase_stage = analysis_result.get('购房阶段', {}).get('当前阶段', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
+                
+                record = {
+                    'filename': task_info['audio_url'],
+                    'customer_grade': customer_grade,
+                    'intention_level': intention_level,
+                    'purchase_stage': purchase_stage,
+                    'summary': summary,
+                    'analysis_data': analysis_result,
+                    'tags': tags,
+                    'speaker1_data': speaker1_text,
+                    'speaker2_data': speaker2_text
+                }
+                
+                database.save_record(record)
+                logger.info(f'URL音频分析记录保存成功')
+            except Exception as e:
+                logger.error(f'保存URL音频分析记录失败: {str(e)}')
+            
+            # 更新任务状态
+            with long_audio_lock:
+                task_info['status'] = 'completed'
+            
+            # 返回完整结果
+            return jsonify({
+                'status': 'success',
+                'speaker1': speaker1_text,
+                'speaker2': speaker2_text,
+                'analysis': analysis_result
+            })
+            
+        elif result['status'] == 'failed':
+            # 任务失败
+            with long_audio_lock:
+                task_info['status'] = 'failed'
+            return jsonify({
+                'status': 'failed',
+                'error': result['error']
+            })
+            
+        else:
+            # 处理中
+            return jsonify({
+                'status': 'processing',
+                'message': result.get('message', '任务处理中...')
+            })
+        
+    except Exception as e:
+        logger.error(f'查询任务状态失败: {str(e)}')
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'status': 'failed',
+            'error': f'查询失败: {str(e)}'
+        }), 500
 
 
 if __name__ == '__main__':

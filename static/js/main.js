@@ -1,7 +1,7 @@
 // 全局变量
 let selectedFile = null;
 let analysisResults = null;
-let currentMode = 'file'; // 'file' 或 'text'
+let currentMode = 'file'; // 'file', 'url', 或 'text'
 
 // 批量上传相关变量
 let batchFiles = [];
@@ -14,6 +14,7 @@ let uploadArea, fileInput, selectBtn, filePreview, fileName, fileSize, removeBtn
 let progressSection, progressFill, progressText, progressPercent;
 let resultsSection, errorMessage, errorText;
 let textSection, transcriptInput, charCount, analyzeTextBtn;
+let urlSection, urlInput, processUrlBtn;
 
 // 批量上传DOM元素
 let batchQueueSection, batchFileList, batchProgressSection, batchProgressFill;
@@ -41,6 +42,9 @@ document.addEventListener('DOMContentLoaded', function() {
     transcriptInput = document.getElementById('transcriptInput');
     charCount = document.getElementById('charCount');
     analyzeTextBtn = document.getElementById('analyzeTextBtn');
+    urlSection = document.getElementById('urlSection');
+    urlInput = document.getElementById('urlInput');
+    processUrlBtn = document.getElementById('processUrlBtn');
     
     // 初始化批量上传DOM元素
     batchQueueSection = document.getElementById('batchQueueSection');
@@ -60,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initTabs();
     initModeSwitch();
     initTextInput();
+    initUrlInput();
     initBatchUpload();
     
     // 检查URL参数，如果有record_id则加载历史记录
@@ -81,15 +86,174 @@ function initModeSwitch() {
             // 切换显示区域
             if (mode === 'file') {
                 document.getElementById('uploadSection').style.display = 'block';
+                document.getElementById('urlSection').style.display = 'none';
                 document.getElementById('textSection').style.display = 'none';
+                // 显示文件队列（如果有文件）
+                if (batchFiles.length > 0 && batchQueueSection) {
+                    batchQueueSection.style.display = 'block';
+                }
+                // 隐藏URL和文本相关区域
+                hideUrlElements();
+                hideTextElements();
                 currentMode = 'file';
+            } else if (mode === 'url') {
+                document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('urlSection').style.display = 'block';
+                document.getElementById('textSection').style.display = 'none';
+                // 隐藏文件队列
+                if (batchQueueSection) batchQueueSection.style.display = 'none';
+                if (batchProgressSection) batchProgressSection.style.display = 'none';
+                if (batchSummarySection) batchSummarySection.style.display = 'none';
+                // 隐藏文本相关区域
+                hideTextElements();
+                currentMode = 'url';
             } else {
                 document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('urlSection').style.display = 'none';
                 document.getElementById('textSection').style.display = 'block';
+                // 隐藏文件队列
+                if (batchQueueSection) batchQueueSection.style.display = 'none';
+                if (batchProgressSection) batchProgressSection.style.display = 'none';
+                if (batchSummarySection) batchSummarySection.style.display = 'none';
+                // 隐藏URL相关区域
+                hideUrlElements();
                 currentMode = 'text';
             }
         });
     });
+}
+
+// 隐藏URL相关元素
+function hideUrlElements() {
+    // URL模式没有特殊的额外区域需要隐藏
+}
+
+// 隐藏文本相关元素
+function hideTextElements() {
+    // 文本模式没有特殊的额外区域需要隐藏
+}
+
+// 初始化URL输入
+function initUrlInput() {
+    if (processUrlBtn) {
+        processUrlBtn.addEventListener('click', () => {
+            processAudioUrl();
+        });
+    }
+    
+    if (urlInput) {
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                processAudioUrl();
+            }
+        });
+    }
+}
+
+// 处理音频URL
+async function processAudioUrl() {
+    const url = urlInput ? urlInput.value.trim() : '';
+    
+    if (!url) {
+        showError('请输入音频URL');
+        return;
+    }
+    
+    // 简单的URL验证
+    try {
+        new URL(url);
+    } catch {
+        showError('请输入有效的URL');
+        return;
+    }
+    
+    try {
+        // 确保文件队列区域隐藏
+        if (batchQueueSection) batchQueueSection.style.display = 'none';
+        if (batchProgressSection) batchProgressSection.style.display = 'none';
+        if (batchSummarySection) batchSummarySection.style.display = 'none';
+        
+        if (progressSection) {
+            progressSection.style.display = 'block';
+            progressSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        showProgress('提交任务...', 10);
+        updateStep(1, 'active');
+        
+        const response = await fetch('/api/process-url', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url: url })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showProgress('处理中...', 30);
+            updateStep(1, 'completed');
+            updateStep(2, 'active');
+            
+            // 轮询任务状态
+            await pollTaskStatus(result.task_id);
+        } else {
+            showError(result.error || '处理失败');
+            hideProgress();
+        }
+    } catch (error) {
+        showError('处理失败: ' + error.message);
+        hideProgress();
+    }
+}
+
+// 轮询任务状态
+async function pollTaskStatus(taskId) {
+    const maxAttempts = 120; // 最多轮询120次（如果5秒一次，就是10分钟）
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+        try {
+            const response = await fetch(`/api/task-status/${taskId}`);
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                showProgress('处理完成！', 100);
+                updateStep(4, 'completed');
+                analysisResults = result;
+                setTimeout(() => {
+                    displayResults(result);
+                }, 500);
+                return;
+            } else if (result.status === 'failed') {
+                showError(result.error || '处理失败');
+                hideProgress();
+                return;
+            } else {
+                // 更新进度
+                const progress = Math.min(80, (attempts / maxAttempts) * 100);
+                showProgress(result.message || '处理中...', progress);
+                
+                if (attempts < 30) {
+                    updateStep(2, 'completed');
+                    updateStep(3, 'active');
+                } else if (attempts < 60) {
+                    updateStep(3, 'completed');
+                    updateStep(4, 'active');
+                }
+            }
+            
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 5000)); // 每5秒查询一次
+        } catch (error) {
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    }
+    
+    showError('处理超时，请稍后重试');
+    hideProgress();
 }
 
 // 初始化文本输入
@@ -120,6 +284,11 @@ async function analyzeTranscript() {
     }
     
     try {
+        // 确保文件队列区域隐藏
+        if (batchQueueSection) batchQueueSection.style.display = 'none';
+        if (batchProgressSection) batchProgressSection.style.display = 'none';
+        if (batchSummarySection) batchSummarySection.style.display = 'none';
+        
         if (progressSection) {
             progressSection.style.display = 'block';
             progressSection.scrollIntoView({ behavior: 'smooth' });
@@ -446,27 +615,49 @@ function displayChatMessages(speaker1Data, speaker2Data, role1, role2) {
     
     let messages = [];
     
+    // 收集所有消息，包括时间信息
     if (Array.isArray(speaker1Data)) {
-        speaker1Data.forEach((item, index) => {
-            messages.push({
-                speaker: 1,
-                text: typeof item === 'object' ? item.text : item,
-                order: index * 2
-            });
+        speaker1Data.forEach((item) => {
+            if (typeof item === 'object') {
+                messages.push({
+                    speaker: 1,
+                    text: item.text || '',
+                    start_time: item.start_time || 0,
+                    end_time: item.end_time || 0
+                });
+            } else {
+                messages.push({
+                    speaker: 1,
+                    text: item,
+                    start_time: 0,
+                    end_time: 0
+                });
+            }
         });
     }
     
     if (Array.isArray(speaker2Data)) {
-        speaker2Data.forEach((item, index) => {
-            messages.push({
-                speaker: 2,
-                text: typeof item === 'object' ? item.text : item,
-                order: index * 2 + 1
-            });
+        speaker2Data.forEach((item) => {
+            if (typeof item === 'object') {
+                messages.push({
+                    speaker: 2,
+                    text: item.text || '',
+                    start_time: item.start_time || 0,
+                    end_time: item.end_time || 0
+                });
+            } else {
+                messages.push({
+                    speaker: 2,
+                    text: item,
+                    start_time: 0,
+                    end_time: 0
+                });
+            }
         });
     }
     
-    messages.sort((a, b) => a.order - b.order);
+    // 按开始时间排序
+    messages.sort((a, b) => a.start_time - b.start_time);
     
     let html = '';
     messages.forEach((msg, index) => {
@@ -514,99 +705,87 @@ function highlightKeywords(text) {
     
     let result = text;
     
-    const pricePatterns = [
-        /(\d+(?:\.\d+)?\s*[万百千万亿]+(?:\/平(?:米)?)?)/g,
-        /(\d+(?:\.\d+)?\s*元(?:\/平(?:米)?)?)/g,
-        /(\d{1,3}(?:,\d{3})*(?:\.\d+)?(?:万|元)?(?:\/平(?:米)?)?)/g,
-        /(单价\s*[:：]?\s*\d+(?:\.\d+)?(?:万|元)?(?:\/平(?:米)?)?)/g,
-        /(总价\s*[:：]?\s*\d+(?:\.\d+)?(?:万|元)?)/g
+    const patterns = [
+        {
+            regex: /(1[3-9]\d{9})/g,
+            class: 'highlight-phone'
+        },
+        {
+            regex: /(1[3-9]\d-\d{4}-\d{4})/g,
+            class: 'highlight-phone'
+        },
+        {
+            regex: /(1[3-9]\d\s*\d{4}\s*\d{4})/g,
+            class: 'highlight-phone'
+        },
+        {
+            regex: /(1[3-9][\dXx]{2}[\s-]?[\dXx]{4}[\s-]?[\dXx]{4})/g,
+            class: 'highlight-phone'
+        },
+        {
+            regex: /(\d+(?:\.\d+)?\s*[万百千万亿]+(?:\/平(?:米)?)?)/g,
+            class: 'highlight-price'
+        },
+        {
+            regex: /(\d+(?:\.\d+)?\s*元(?:\/平(?:米)?)?)/g,
+            class: 'highlight-price'
+        },
+        {
+            regex: /(单价\s*[:：]?\s*\d+(?:\.\d+)?(?:万|元)?(?:\/平(?:米)?)?)/g,
+            class: 'highlight-price'
+        },
+        {
+            regex: /(总价\s*[:：]?\s*\d+(?:\.\d+)?(?:万|元)?)/g,
+            class: 'highlight-price'
+        },
+        {
+            regex: /(\d+(?:\.\d+)?\s*(?:平(?:米)?|平方米|m²))/g,
+            class: 'highlight-area'
+        },
+        {
+            regex: /(三室两厅|两室一厅|一室一厅|四室两厅|三室一厅|两室两厅|一居室|两居室|三居室|四居室)/g,
+            class: 'highlight-area'
+        },
+        {
+            regex: /(\d+室\d+厅)/g,
+            class: 'highlight-area'
+        },
+        {
+            regex: /(明天|后天|大后天)/g,
+            class: 'highlight-time'
+        },
+        {
+            regex: /(今天|今晚)/g,
+            class: 'highlight-time'
+        },
+        {
+            regex: /(周[一二三四五六日]|周末)/g,
+            class: 'highlight-time'
+        },
+        {
+            regex: /(下[周月]|上[周月])/g,
+            class: 'highlight-time'
+        },
+        {
+            regex: /(上午|下午|中午|晚上|傍晚|凌晨)/g,
+            class: 'highlight-time'
+        },
+        {
+            regex: /(\d{1,2}[点时](?:\d{1,2}分?)?)/g,
+            class: 'highlight-time'
+        }
     ];
-    
-    const areaPatterns = [
-        /(\d+(?:\.\d+)?\s*(?:平(?:米)?|平方米|m²))/g,
-        /(三室两厅|两室一厅|一室一厅|四室两厅|三室一厅|两室两厅|一居室|两居室|三居室|四居室)/g,
-        /(\d+室\d+厅)/g
-    ];
-    
-    const timePatterns = [
-        /(明天|后天|大后天)/g,
-        /(今天|今晚)/g,
-        /(周[一二三四五六日]|周末)/g,
-        /(下[周月]|上[周月])/g,
-        /(上午|下午|中午|晚上|傍晚|凌晨)/g,
-        /(\d{1,2}[点时](?:\d{1,2}分?)?)/g,
-        /(这[个]?[周月]|这[个]?周末)/g,
-        /([下上]午\s*\d{1,2}[点时](?:\d{1,2}分?)?)/g
-    ];
-    
-    const phonePatterns = [
-        /(1[3-9]\d{9})/g,
-        /(1[3-9]\d-\d{4}-\d{4})/g,
-        /(1[3-9]\d\s*\d{4}\s*\d{4})/g,
-        /(1[3-9][\dXx]{2}[\s-]?[\dXx]{4}[\s-]?[\dXx]{4})/g
-    ];
-    
-    const placeholders = [];
-    
-    function savePlaceholder(type, match) {
-        const index = placeholders.length;
-        placeholders.push({ type, match });
-        return `__PLACEHOLDER_${index}__`;
-    }
-    
-    phonePatterns.forEach(pattern => {
-        result = result.replace(pattern, (match) => {
-            return savePlaceholder('phone', match);
-        });
-    });
-    
-    pricePatterns.forEach(pattern => {
-        result = result.replace(pattern, (match) => {
-            return savePlaceholder('price', match);
-        });
-    });
-    
-    areaPatterns.forEach(pattern => {
-        result = result.replace(pattern, (match) => {
-            return savePlaceholder('area', match);
-        });
-    });
-    
-    timePatterns.forEach(pattern => {
-        result = result.replace(pattern, (match) => {
-            return savePlaceholder('time', match);
-        });
-    });
     
     result = result
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
     
-    placeholders.forEach((item, index) => {
-        const escapedMatch = item.match
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-        
-        let className = '';
-        switch (item.type) {
-            case 'price':
-                className = 'highlight-price';
-                break;
-            case 'area':
-                className = 'highlight-area';
-                break;
-            case 'time':
-                className = 'highlight-time';
-                break;
-            case 'phone':
-                className = 'highlight-phone';
-                break;
-        }
-        
-        result = result.replace(`__PLACEHOLDER_${index}__`, `<span class="${className}">${escapedMatch}</span>`);
-    });
+    for (const { regex, class: className } of patterns) {
+        result = result.replace(regex, (match) => {
+            return `<span class="${className}">${match}</span>`;
+        });
+    }
     
     return result;
 }
@@ -650,16 +829,16 @@ function displayAnalysis(analysis) {
     displayStage(analysis['购房阶段']);
     
     // 核心关注点
-    displayConcerns(analysis['核心关注点']);
+    displayConcerns(analysis['客户核心关注点'] || analysis['核心关注点']);
     
     // 竞品分析
-    displayCompetitor(analysis['竞品分析']);
+    displayCompetitor(analysis['竞品对比'] || analysis['竞品分析']);
     
     // 情感分析
-    displaySentiment(analysis['情感分析']);
+    displaySentiment(analysis['情感与沟通'] || analysis['情感分析']);
     
     // 关键信息
-    displayKeyInfo(analysis['关键信息']);
+    displayKeyInfo(analysis['关键信息提取'] || analysis['关键信息']);
     
     // 总结
     const summaryText = document.getElementById('summaryText');
@@ -694,7 +873,7 @@ function generateCustomerTags(analysis) {
     
     const rating = analysis['客户评级'] || {};
     const stage = analysis['购房阶段'] || {};
-    const concerns = analysis['核心关注点'] || {};
+    const concerns = analysis['客户核心关注点'] || analysis['核心关注点'] || {};
     
     const intention = rating['购房意向强度'] || '';
     if (intention === '高') {
@@ -1441,9 +1620,24 @@ function displayHistoryRecord(record) {
 
 // 重置应用
 function resetApp() {
-    removeFile();
-    if (transcriptInput) transcriptInput.value = '';
-    if (charCount) charCount.textContent = '0 字符';
+    // 根据当前模式重置对应的输入
+    if (currentMode === 'file') {
+        removeFile();
+        // 保持文件队列可见（如果有文件）
+        if (batchFiles.length > 0 && batchQueueSection) {
+            batchQueueSection.style.display = 'block';
+        }
+    } else if (currentMode === 'url') {
+        if (urlInput) urlInput.value = '';
+    } else if (currentMode === 'text') {
+        if (transcriptInput) transcriptInput.value = '';
+        if (charCount) charCount.textContent = '0 字符';
+    }
+    
+    // 隐藏结果和进度区域
+    if (resultsSection) resultsSection.style.display = 'none';
+    if (progressSection) progressSection.style.display = 'none';
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

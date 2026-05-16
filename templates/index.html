@@ -36,7 +36,7 @@
                     </a>
                     <a href="/dashboard" class="nav-item">
                         <span class="nav-icon">📊</span>
-                        <span>统计仪表盘</span>
+                        <span>数据统计</span>
                     </a>
                 </div>
             </nav>
@@ -48,6 +48,10 @@
                 <button class="mode-tab active" data-mode="file">
                     <span class="mode-icon">📁</span>
                     <span>上传文件</span>
+                </button>
+                <button class="mode-tab" data-mode="url">
+                    <span class="mode-icon">🔗</span>
+                    <span>URL链接</span>
                 </button>
                 <button class="mode-tab" data-mode="text">
                     <span class="mode-icon">📝</span>
@@ -104,7 +108,38 @@
                 </div>
             </div>
         </div>
-        
+
+        <!-- URL输入区域 -->
+        <div class="url-section" id="urlSection" style="display: none;">
+            <div class="url-input-card">
+                <div class="url-input-header">
+                    <h3>🔗 输入音频URL</h3>
+                    <p>支持火山引擎长音频接口（推荐用于长录音）</p>
+                </div>
+                <div class="url-input-wrapper">
+                    <input type="text" id="urlInput" class="url-input" placeholder="请输入音频文件链接">
+                    <button class="btn btn-primary btn-large" id="processUrlBtn">
+                        <span class="btn-icon">🚀</span>
+                        <span>开始处理</span>
+                    </button>
+                </div>
+                <div class="url-info">
+                    <div class="info-item">
+                        <span class="info-icon">✓</span>
+                        <span>支持格式：MP3、WAV等</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">✓</span>
+                        <span>长音频支持：火山引擎异步处理</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">✓</span>
+                        <span>文件需公网可访问</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 批量上传文件队列 -->
         <div class="batch-queue-section" id="batchQueueSection">
             <div class="batch-queue-card">
@@ -172,17 +207,14 @@
             <div class="text-input-card">
                 <div class="text-input-header">
                     <h3>📝 粘贴转录文本</h3>
-                    <p>请粘贴飞书妙计或其他工具导出的转录文本</p>
                 </div>
                 <textarea id="transcriptInput" class="transcript-textarea" placeholder="示例格式：
+				
 说话人 1 00:03
-你好。您好，中海永定九里项目售楼处...
+您好，XXX项目售楼处...
 
 说话人 2 00:12
-单价多少钱？
-
-说话人 1 00:14
-现在咱们单价的话大概在45,000左右..."></textarea>
+单价多少钱？"></textarea>
                 <div class="text-input-footer">
                     <span class="char-count" id="charCount">0 字符</span>
                     <button class="btn btn-primary btn-large" id="analyzeTextBtn">

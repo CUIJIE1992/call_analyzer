@@ -27,7 +27,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    padding: 20px;
+    padding: 10px;
     color: var(--text-primary);
     line-height: 1.6;
 }
@@ -57,7 +57,7 @@ body {
 .header {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     color: white;
-    padding: 40px;
+    padding: 20px 30px;
 }
 
 .header-content {
@@ -65,17 +65,17 @@ body {
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: 15px;
 }
 
 .logo {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
 }
 
 .logo-icon {
-    font-size: 3em;
+    font-size: 2em;
     animation: bounce 2s infinite;
 }
 
@@ -85,39 +85,39 @@ body {
 }
 
 .logo-text h1 {
-    font-size: 2em;
-    margin-bottom: 5px;
+    font-size: 1.5em;
+    margin-bottom: 3px;
     font-weight: 700;
 }
 
 .subtitle {
-    font-size: 1em;
+    font-size: 0.85em;
     opacity: 0.9;
 }
 
 .header-badge {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .badge-item {
     background: rgba(255, 255, 255, 0.2);
-    padding: 8px 16px;
+    padding: 5px 12px;
     border-radius: 20px;
-    font-size: 0.9em;
+    font-size: 0.8em;
     backdrop-filter: blur(10px);
 }
 
 /* 上传区域 */
 .upload-section {
-    padding: 50px;
+    padding: 25px 30px;
 }
 
 .upload-area {
     border: 3px dashed var(--primary-color);
     border-radius: var(--radius-lg);
-    padding: 60px 40px;
+    padding: 35px 30px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -162,11 +162,11 @@ body {
 .upload-icon-wrapper {
     position: relative;
     display: inline-block;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .upload-icon {
-    font-size: 5em;
+    font-size: 3em;
     position: relative;
     z-index: 1;
 }
@@ -176,8 +176,8 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     border-radius: 50%;
     opacity: 0.1;
@@ -191,30 +191,30 @@ body {
 
 .upload-area h2 {
     color: var(--primary-color);
-    margin-bottom: 10px;
-    font-size: 1.8em;
+    margin-bottom: 8px;
+    font-size: 1.3em;
 }
 
 .upload-subtitle {
     color: var(--text-secondary);
-    margin-bottom: 25px;
-    font-size: 1.1em;
+    margin-bottom: 15px;
+    font-size: 0.95em;
 }
 
 .upload-info {
     display: flex;
     justify-content: center;
-    gap: 30px;
-    margin-top: 30px;
+    gap: 18px;
+    margin-top: 18px;
     flex-wrap: wrap;
 }
 
 .info-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     color: var(--text-secondary);
-    font-size: 0.95em;
+    font-size: 0.85em;
 }
 
 .info-icon {
@@ -224,16 +224,16 @@ body {
 
 /* 按钮 */
 .btn {
-    padding: 12px 30px;
+    padding: 10px 24px;
     border: none;
     border-radius: 25px;
-    font-size: 1em;
+    font-size: 0.9em;
     cursor: pointer;
     transition: all 0.3s ease;
     font-weight: 500;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     justify-content: center;
     position: relative;
     overflow: hidden;
@@ -302,18 +302,18 @@ body {
 }
 
 .btn-large {
-    padding: 15px 40px;
-    font-size: 1.1em;
+    padding: 12px 32px;
+    font-size: 0.95em;
 }
 
 .btn-small {
-    padding: 8px 20px;
-    font-size: 0.9em;
+    padding: 6px 16px;
+    font-size: 0.85em;
 }
 
 .btn-icon-only {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     padding: 0;
     border-radius: 50%;
 }
@@ -899,11 +899,11 @@ body {
 /* 响应式设计 */
 @media (max-width: 768px) {
     body {
-        padding: 10px;
+        padding: 8px;
     }
     
     .header {
-        padding: 30px 20px;
+        padding: 15px 20px;
     }
     
     .header-content {
@@ -912,33 +912,44 @@ body {
     }
     
     .logo-text h1 {
-        font-size: 1.5em;
+        font-size: 1.3em;
     }
     
-    .upload-section {
-        padding: 30px 20px;
+    .upload-section,
+    .url-section,
+    .text-section {
+        padding: 20px 15px;
     }
     
     .upload-area {
-        padding: 40px 20px;
+        padding: 30px 15px;
     }
     
     .upload-icon {
-        font-size: 3em;
+        font-size: 2.5em;
     }
     
     .upload-area h2 {
-        font-size: 1.4em;
+        font-size: 1.2em;
     }
     
-    .upload-info {
+    .upload-info,
+    .url-info {
         flex-direction: column;
-        gap: 15px;
+        gap: 10px;
+    }
+    
+    .url-input-wrapper {
+        flex-direction: column;
+    }
+    
+    .url-input {
+        width: 100%;
     }
     
     .progress-section,
     .results-section {
-        padding: 30px 20px;
+        padding: 20px 15px;
     }
     
     .progress-steps {
@@ -994,32 +1005,32 @@ body {
 
 /* 模式选择 */
 .mode-section {
-    padding: 20px 50px 0;
+    padding: 15px 30px 0;
 }
 
 .mode-tabs {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     background: var(--bg-light);
-    padding: 10px;
+    padding: 8px;
     border-radius: var(--radius-lg);
 }
 
 .mode-tab {
     flex: 1;
-    padding: 15px 30px;
+    padding: 10px 20px;
     background: transparent;
     border: none;
     border-radius: var(--radius-md);
     cursor: pointer;
-    font-size: 1em;
+    font-size: 0.9em;
     font-weight: 500;
     color: var(--text-secondary);
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .mode-tab:hover {
@@ -1034,44 +1045,44 @@ body {
 }
 
 .mode-icon {
-    font-size: 1.3em;
+    font-size: 1.1em;
 }
 
 /* 文本输入区域 */
 .text-section {
-    padding: 50px;
+    padding: 25px 30px;
 }
 
 .text-input-card {
     background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
     border-radius: var(--radius-lg);
-    padding: 30px;
+    padding: 20px;
     box-shadow: var(--shadow-sm);
 }
 
 .text-input-header {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .text-input-header h3 {
     color: var(--text-primary);
-    margin-bottom: 10px;
-    font-size: 1.3em;
+    margin-bottom: 8px;
+    font-size: 1.1em;
 }
 
 .text-input-header p {
     color: var(--text-secondary);
-    font-size: 0.95em;
+    font-size: 0.85em;
 }
 
 .transcript-textarea {
     width: 100%;
-    min-height: 300px;
-    padding: 20px;
+    min-height: 180px;
+    padding: 15px;
     border: 2px solid #e0e0e0;
     border-radius: var(--radius-md);
-    font-size: 1em;
-    line-height: 1.8;
+    font-size: 0.95em;
+    line-height: 1.6;
     resize: vertical;
     font-family: inherit;
     transition: all 0.3s ease;
@@ -1086,19 +1097,80 @@ body {
 
 .transcript-textarea::placeholder {
     color: #aaa;
-    font-size: 0.9em;
+    font-size: 0.85em;
 }
 
 .text-input-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 20px;
+    margin-top: 15px;
 }
 
 .char-count {
     color: var(--text-secondary);
-    font-size: 0.9em;
+    font-size: 0.85em;
+}
+
+/* URL输入区域 */
+.url-section {
+    padding: 25px 30px;
+}
+
+.url-input-card {
+    background: linear-gradient(135deg, #fff5f5 0%, #fff0f6 100%);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.url-input-header {
+    margin-bottom: 15px;
+}
+
+.url-input-header h3 {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    font-size: 1.1em;
+}
+
+.url-input-header p {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+}
+
+.url-input-wrapper {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.url-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--radius-md);
+    font-size: 0.95em;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.url-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.url-input::placeholder {
+    color: #aaa;
+    font-size: 0.85em;
+}
+
+.url-info {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 /* 说话人样式优化 */
@@ -2056,6 +2128,7 @@ body {
     
     .mode-section,
     .upload-section,
+    .url-section,
     .text-section,
     .progress-section,
     .action-buttons,
@@ -2737,28 +2810,28 @@ body {
 .main-nav {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(10px);
-    padding: 15px 0;
-    margin-top: 20px;
+    padding: 8px 0;
+    margin-top: 10px;
     border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .nav-container {
     display: flex;
     justify-content: center;
-    gap: 15px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     color: white;
     text-decoration: none;
-    padding: 10px 24px;
+    padding: 6px 16px;
     border-radius: 25px;
     font-weight: 500;
-    font-size: 0.95em;
+    font-size: 0.85em;
     transition: all 0.3s ease;
     background: rgba(255, 255, 255, 0.1);
 }
@@ -2776,7 +2849,7 @@ body {
 }
 
 .nav-icon {
-    font-size: 1.2em;
+    font-size: 1em;
 }
 
 @media (max-width: 768px) {
@@ -2878,6 +2951,8 @@ body {
 .batch-file-item:hover {
     box-shadow: var(--shadow-sm);
     transform: translateX(5px);
+    border-bottom: 3px solid var(--primary-color);
+    padding-bottom: 12px;
 }
 
 .batch-file-item.status-processing {
@@ -3154,6 +3229,8 @@ body {
 .summary-item:hover {
     transform: translateX(5px);
     box-shadow: var(--shadow-sm);
+    border-bottom: 3px solid var(--primary-color);
+    padding-bottom: 12px;
 }
 
 .summary-item.success {

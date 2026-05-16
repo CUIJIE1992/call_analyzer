@@ -18,8 +18,8 @@ try:
     from pyannote.audio import Pipeline
     PYANNOTE_AVAILABLE = True
     logger.info("pyannote.audio 已成功导入")
-except ImportError as e:
-    logger.warning(f"pyannote.audio 导入失败: {e}，将使用模拟模式")
+except ImportError:
+    # 静默处理：不显示警告，直接使用模拟模式（火山引擎已内置说话人分离）
     PYANNOTE_AVAILABLE = False
 
 

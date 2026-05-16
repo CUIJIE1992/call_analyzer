@@ -12,7 +12,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm, cm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
@@ -132,39 +132,39 @@ def create_styles(font_name):
         name='ChineseTitle',
         fontName=font_name,
         fontSize=24,
-        leading=30,
+        leading=36,
         alignment=TA_CENTER,
         textColor=colors.HexColor('#667eea'),
-        spaceAfter=10
+        spaceAfter=12
     ))
     
     styles.add(ParagraphStyle(
         name='ChineseSubtitle',
         fontName=font_name,
         fontSize=12,
-        leading=16,
+        leading=18,
         alignment=TA_CENTER,
         textColor=colors.gray,
-        spaceAfter=5
+        spaceAfter=8
     ))
     
     styles.add(ParagraphStyle(
         name='ChineseSectionTitle',
         fontName=font_name,
         fontSize=14,
-        leading=20,
+        leading=22,
         textColor=colors.white,
-        spaceBefore=15,
-        spaceAfter=10
+        spaceBefore=20,
+        spaceAfter=12
     ))
     
     styles.add(ParagraphStyle(
         name='ChineseBody',
         fontName=font_name,
         fontSize=10,
-        leading=16,
+        leading=18,
         alignment=TA_JUSTIFY,
-        spaceAfter=8
+        spaceAfter=10
     ))
     
     styles.add(ParagraphStyle(
@@ -179,7 +179,7 @@ def create_styles(font_name):
         name='ChineseValue',
         fontName=font_name,
         fontSize=11,
-        leading=16,
+        leading=18,
         textColor=colors.HexColor('#333333')
     ))
     
@@ -187,52 +187,66 @@ def create_styles(font_name):
         name='ChineseSummary',
         fontName=font_name,
         fontSize=11,
-        leading=18,
+        leading=20,
         alignment=TA_JUSTIFY,
         backColor=colors.HexColor('#fef3c7'),
-        borderPadding=10
+        borderPadding=10,
+        spaceAfter=10
     ))
     
     styles.add(ParagraphStyle(
         name='ChatBubble1',
         fontName=font_name,
         fontSize=10,
-        leading=14,
+        leading=16,
         textColor=colors.black,
         backColor=colors.HexColor('#95ec69'),
-        borderPadding=8
+        borderPadding=8,
+        spaceAfter=8
     ))
     
     styles.add(ParagraphStyle(
         name='ChatBubble2',
         fontName=font_name,
         fontSize=10,
-        leading=14,
+        leading=16,
         textColor=colors.black,
         backColor=colors.HexColor('#f5f5f5'),
-        borderPadding=8
+        borderPadding=8,
+        spaceAfter=8
     ))
     
     return styles
 
-def create_section_table(title, content, styles):
+def create_section_table(title, styles):
     """创建带标题的内容区块"""
     data = [[Paragraph(title, styles['ChineseSectionTitle'])]]
     
-    section_table = Table(data, colWidths=[180*mm])
+    section_table = Table(data, colWidths=[170*mm])
     section_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#667eea')),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
         ('LEFTPADDING', (0, 0), (-1, -1), 15),
         ('RIGHTPADDING', (0, 0), (-1, -1), 15),
-        ('ROUNDEDCORNERS', [5, 5, 5, 5]),
     ]))
     
     return section_table
+
+def create_wrappable_cell(text, font_name, font_size=10):
+    """创建可换行的表格单元格内容"""
+    style = ParagraphStyle(
+        name='TableCell',
+        fontName=font_name,
+        fontSize=font_size,
+        leading=16,
+        alignment=TA_CENTER,
+        wordWrap='CJK'
+    )
+    return Paragraph(text, style)
 
 def generate_pdf_report(analysis, speaker1=None, speaker2=None):
     """
@@ -266,43 +280,48 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
     story.append(Paragraph("🏠 购房电话分析报告", styles['ChineseTitle']))
     story.append(Paragraph("AI驱动的房产销售洞察与客户跟进策略", styles['ChineseSubtitle']))
     story.append(Paragraph(f"生成时间：{datetime.now().strftime('%Y年%m月%d日 %H:%M')}", styles['ChineseSubtitle']))
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 25))
     
     # 通话概要
     if analysis.get('通话概要'):
-        story.append(create_section_table("📊 通话概要", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("📊 通话概要", styles))
+        story.append(Spacer(1, 10))
         
         overview = analysis['通话概要']
+        
+        # 使用可换行的Paragraph作为单元格内容
         overview_data = [
-            ['通话时长', '有效沟通程度', '客户响应积极性'],
             [
-                overview.get('通话时长估算', '-'),
-                overview.get('有效沟通程度', '-'),
-                overview.get('客户响应积极性', '-')
+                create_wrappable_cell('通话时长', font_name, 9),
+                create_wrappable_cell('有效沟通程度', font_name, 9),
+                create_wrappable_cell('客户响应积极性', font_name, 9)
+            ],
+            [
+                create_wrappable_cell(overview.get('通话时长估算', '-'), font_name, 11),
+                create_wrappable_cell(overview.get('有效沟通程度', '-'), font_name, 11),
+                create_wrappable_cell(overview.get('客户响应积极性', '-'), font_name, 11)
             ]
         ]
         
-        overview_table = Table(overview_data, colWidths=[60*mm, 60*mm, 60*mm])
+        overview_table = Table(overview_data, colWidths=[56*mm, 56*mm, 56*mm])
         overview_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.gray),
-            ('FONTNAME', (0, 0), (-1, -1), font_name),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('FONTSIZE', (0, 1), (-1, -1), 12),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e0e0e0')),
         ]))
         story.append(overview_table)
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 客户评级
     if analysis.get('客户评级'):
-        story.append(create_section_table("🏆 客户评级", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("🏆 客户评级", styles))
+        story.append(Spacer(1, 10))
         
         rating = analysis['客户评级']
         
@@ -317,54 +336,58 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
             story.append(Paragraph(item, styles['ChineseBody']))
         
         story.append(Paragraph(f"<b>评级说明：</b>{rating.get('等级说明', '-')}", styles['ChineseBody']))
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 购房意向
     if analysis.get('购房意向'):
-        story.append(create_section_table("🏠 购房意向分析", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("🏠 购房意向分析", styles))
+        story.append(Spacer(1, 10))
         
         intention = analysis['购房意向']
         intention_data = [
-            ['面积需求', '价格区间', '区域偏好', '户型需求'],
             [
-                intention.get('面积需求', '未提及'),
-                intention.get('价格区间', '未提及'),
-                intention.get('区域偏好', '未提及'),
-                intention.get('户型需求', '未提及')
+                create_wrappable_cell('面积需求', font_name, 9),
+                create_wrappable_cell('价格区间', font_name, 9),
+                create_wrappable_cell('区域偏好', font_name, 9),
+                create_wrappable_cell('户型需求', font_name, 9)
+            ],
+            [
+                create_wrappable_cell(intention.get('面积需求', '未提及'), font_name, 10),
+                create_wrappable_cell(intention.get('价格区间', '未提及'), font_name, 10),
+                create_wrappable_cell(intention.get('区域偏好', '未提及'), font_name, 10),
+                create_wrappable_cell(intention.get('户型需求', '未提及'), font_name, 10)
             ]
         ]
         
-        intention_table = Table(intention_data, colWidths=[45*mm, 45*mm, 45*mm, 45*mm])
+        intention_table = Table(intention_data, colWidths=[42*mm, 42*mm, 42*mm, 42*mm])
         intention_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f0f0f0')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.gray),
-            ('FONTNAME', (0, 0), (-1, -1), font_name),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e0e0e0')),
         ]))
         story.append(intention_table)
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 购房阶段
     if analysis.get('购房阶段'):
-        story.append(create_section_table("📍 购房阶段识别", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("📍 购房阶段识别", styles))
+        story.append(Spacer(1, 10))
         
         stage = analysis['购房阶段']
         story.append(Paragraph(f"<b>当前阶段：</b>{stage.get('当前阶段', '-')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>阶段特征：</b>{stage.get('阶段特征', '-')}", styles['ChineseBody']))
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 核心关注点
     if analysis.get('核心关注点'):
-        story.append(create_section_table("🎯 客户核心关注点", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("🎯 客户核心关注点", styles))
+        story.append(Spacer(1, 10))
         
         concerns = analysis['核心关注点']
         
@@ -380,12 +403,12 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
         if concerns.get('其他关注'):
             story.append(Paragraph(f"<b>其他关注点：</b>{'、'.join(concerns['其他关注'])}", styles['ChineseBody']))
         
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 竞品分析
     if analysis.get('竞品分析'):
-        story.append(create_section_table("⚖️ 竞品对比分析", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("⚖️ 竞品对比分析", styles))
+        story.append(Spacer(1, 10))
         
         competitor = analysis['竞品分析']
         
@@ -404,34 +427,34 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
             for item in competitor['本项目劣势']:
                 story.append(Paragraph(f"  • {item}", styles['ChineseBody']))
         
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 情感分析
     if analysis.get('情感分析'):
-        story.append(create_section_table("😊 情感与沟通分析", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("😊 情感与沟通分析", styles))
+        story.append(Spacer(1, 10))
         
         sentiment = analysis['情感分析']
         story.append(Paragraph(f"<b>客户态度：</b>{sentiment.get('客户态度', '-')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>置业顾问表现：</b>{sentiment.get('置业顾问表现', '-')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>沟通效果：</b>{sentiment.get('沟通效果', '-')}", styles['ChineseBody']))
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 关键信息
     if analysis.get('关键信息'):
-        story.append(create_section_table("🔑 关键信息提取", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("🔑 关键信息提取", styles))
+        story.append(Spacer(1, 10))
         
         key_info = analysis['关键信息']
         story.append(Paragraph(f"<b>📞 联系方式：</b>{key_info.get('联系方式', '暂无')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>📅 看房安排：</b>{key_info.get('看房安排', '暂无')}", styles['ChineseBody']))
         story.append(Paragraph(f"<b>📝 特殊需求：</b>{key_info.get('特殊需求', '暂无')}", styles['ChineseBody']))
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 跟进建议
     if analysis.get('跟进建议'):
-        story.append(create_section_table("💡 跟进策略建议", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("💡 跟进策略建议", styles))
+        story.append(Spacer(1, 10))
         
         followup = analysis['跟进建议']
         
@@ -453,35 +476,67 @@ def generate_pdf_report(analysis, speaker1=None, speaker2=None):
         if followup.get('下一步计划'):
             story.append(Paragraph(f"<b>📋 下一步跟进计划：</b>{followup['下一步计划']}", styles['ChineseBody']))
         
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 20))
     
     # 总结
     if analysis.get('总结'):
-        story.append(create_section_table("✅ 分析总结", "", styles))
-        story.append(Spacer(1, 5))
+        story.append(create_section_table("✅ 分析总结", styles))
+        story.append(Spacer(1, 10))
         story.append(Paragraph(analysis['总结'], styles['ChineseSummary']))
+        story.append(Spacer(1, 20))
     
     # 对话记录
     if speaker1 or speaker2:
         story.append(PageBreak())
-        story.append(create_section_table("💬 对话记录", "", styles))
-        story.append(Spacer(1, 10))
+        story.append(create_section_table("💬 对话记录", styles))
+        story.append(Spacer(1, 15))
         
         role1 = analysis.get('角色识别', {}).get('说话人1', '置业顾问')
         role2 = analysis.get('角色识别', {}).get('说话人2', '客户')
         
-        max_len = max(len(speaker1 or []), len(speaker2 or []))
+        # 收集所有消息并排序
+        all_messages = []
         
-        for i in range(max_len):
-            if i < len(speaker1 or []):
-                text = speaker1[i].get('text', speaker1[i]) if isinstance(speaker1[i], dict) else speaker1[i]
-                story.append(Paragraph(f"<b>{role1}：</b>{text}", styles['ChatBubble1']))
-                story.append(Spacer(1, 5))
-            
-            if i < len(speaker2 or []):
-                text = speaker2[i].get('text', speaker2[i]) if isinstance(speaker2[i], dict) else speaker2[i]
-                story.append(Paragraph(f"<b>{role2}：</b>{text}", styles['ChatBubble2']))
-                story.append(Spacer(1, 5))
+        if speaker1 and isinstance(speaker1, list):
+            for item in speaker1:
+                if isinstance(item, dict):
+                    all_messages.append({
+                        'speaker': 1,
+                        'text': item.get('text', ''),
+                        'start_time': item.get('start_time', 0)
+                    })
+                else:
+                    all_messages.append({
+                        'speaker': 1,
+                        'text': str(item),
+                        'start_time': 0
+                    })
+        
+        if speaker2 and isinstance(speaker2, list):
+            for item in speaker2:
+                if isinstance(item, dict):
+                    all_messages.append({
+                        'speaker': 2,
+                        'text': item.get('text', ''),
+                        'start_time': item.get('start_time', 0)
+                    })
+                else:
+                    all_messages.append({
+                        'speaker': 2,
+                        'text': str(item),
+                        'start_time': 0
+                    })
+        
+        # 按时间排序
+        all_messages.sort(key=lambda x: x['start_time'])
+        
+        # 渲染对话
+        for msg in all_messages:
+            if msg['speaker'] == 1:
+                story.append(Paragraph(f"<b>{role1}：</b>{msg['text']}", styles['ChatBubble1']))
+            else:
+                story.append(Paragraph(f"<b>{role2}：</b>{msg['text']}", styles['ChatBubble2']))
+            story.append(Spacer(1, 8))
     
     # 页脚
     story.append(Spacer(1, 30))
