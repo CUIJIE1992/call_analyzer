@@ -14,11 +14,22 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+def _load_env_fallback():
+    """兜底加载 .env，避免因启动顺序或子进程导致环境变量缺失"""
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+
+
 class AIAnalyzer:
     """AI分析器类 - 使用DeepSeek API"""
 
     def __init__(self):
+        # 先尝试从环境变量读取，缺失时强制从 .env 兜底加载
         self.api_key = os.getenv('DEEPSEEK_API_KEY')
+        if not self.api_key:
+            _load_env_fallback()
+            self.api_key = os.getenv('DEEPSEEK_API_KEY')
+
         self.base_url = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
         self.model = os.getenv('DEEPSEEK_MODEL', 'deepseek-v4-flash')
 
