@@ -7,19 +7,46 @@
 import os
 import uuid
 import json
+import re
 import threading
 import zipfile
 import logging
 from io import BytesIO
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, url_for, send_file
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from dotenv import load_dotenv
 from services import database
+from services.speech_to_text import SpeechToText
+from services.ai_analyzer import AIAnalyzer
+from services.pdf_generator import generate_pdf_report
 
-logging.basicConfig(level=logging.DEBUG)
+# 日志配置：生产环境使用INFO，开发环境使用DEBUG
+log_level = logging.INFO if os.environ.get('FLASK_ENV') == 'production' else logging.DEBUG
+logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
+
+# 批量处理线程池，最大并发数为3（避免API限流）
+batch_executor = ThreadPoolExecutor(max_workers=3)
+
+# 简单的内存限流器
+from collections import defaultdict
+import time as _time
+
+rate_limit_store = defaultdict(list)
+RATE_LIMIT_WINDOW = 60  # 秒
+RATE_LIMIT_MAX = 30  # 每窗口最大请求数（分析接口）
+
+def check_rate_limit(key, max_requests=RATE_LIMIT_MAX, window=RATE_LIMIT_WINDOW):
+    """检查是否超出频率限制"""
+    now = _time.time()
+    rate_limit_store[key] = [t for t in rate_limit_store[key] if now - t < window]
+    if len(rate_limit_store[key]) >= max_requests:
+        return False
+    rate_limit_store[key].append(now)
+    return True
 
 batch_processes = {}
 batch_lock = threading.Lock()
@@ -40,7 +67,7 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 # 生产环境使用/tmp目录作为上传目录
 app.config['UPLOAD_FOLDER'] = '/tmp/uploads' if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RENDER') else 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'mp3'}
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
 
 # 确保上传目录存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -50,6 +77,85 @@ def allowed_file(filename):
     """检查文件是否为允许的格式"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+def process_audio_file(filepath, source='录音文件', filename_display=None, cleanup=True):
+    """
+    处理音频文件的公共逻辑
+
+    Args:
+        filepath: 音频文件路径
+        source: 数据来源标识
+        filename_display: 显示用的文件名（可选）
+        cleanup: 处理完成后是否删除源文件
+
+    Returns:
+        dict: 包含 speaker1, speaker2, analysis, record_id 的结果
+    """
+    try:
+        # 步骤1: 语音转文本（火山引擎已内置说话人分离）
+        transcriber = SpeechToText()
+        all_text = transcriber.transcribe(filepath)
+
+        # 根据API返回的speaker_id分配给说话人
+        speaker1_text = []
+        speaker2_text = []
+        for item in all_text:
+            speaker_id = item.get('speaker_id', 1)
+            if speaker_id == 1:
+                speaker1_text.append(item)
+            else:
+                speaker2_text.append(item)
+
+        # 步骤2: AI分析
+        analyzer = AIAnalyzer()
+        analysis_result = analyzer.analyze_conversation(speaker1_text, speaker2_text)
+
+        # 步骤3: 保存分析记录
+        record_id = None
+        try:
+            tags = analyzer.generate_customer_tags(analysis_result)
+
+            summary = analysis_result.get('总结', '') if isinstance(analysis_result.get('总结'), str) else ''
+            customer_grade = analysis_result.get('客户评级', {}).get('综合等级', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
+            intention_level = analysis_result.get('客户评级', {}).get('购房意向强度', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
+            purchase_stage = analysis_result.get('购房阶段', {}).get('当前阶段', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
+
+            display_name = filename_display or os.path.basename(filepath)
+
+            record = {
+                'filename': display_name,
+                'source': source,
+                'customer_grade': customer_grade,
+                'intention_level': intention_level,
+                'purchase_stage': purchase_stage,
+                'summary': summary,
+                'analysis_data': analysis_result,
+                'tags': tags,
+                'speaker1_data': speaker1_text,
+                'speaker2_data': speaker2_text
+            }
+
+            record_id = database.save_record(record)
+            logger.info(f'分析记录保存成功，记录ID: {record_id}')
+        except Exception as e:
+            logger.error(f'保存分析记录失败: {str(e)}')
+
+        return {
+            'success': True,
+            'speaker1': speaker1_text,
+            'speaker2': speaker2_text,
+            'analysis': analysis_result,
+            'record_id': record_id
+        }
+    finally:
+        # 处理完成后清理文件
+        if cleanup and filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+                logger.info(f'已清理临时文件: {filepath}')
+            except Exception as e:
+                logger.warning(f'清理文件失败: {filepath}, 错误: {e}')
 
 
 @app.route('/')
@@ -125,99 +231,42 @@ def upload_file():
 @app.route('/api/process', methods=['POST'])
 def process_audio():
     """处理音频文件"""
-    from services.audio_processor import AudioProcessor
-    from services.speech_to_text import SpeechToText
-    from services.ai_analyzer import AIAnalyzer
-    
+    client_ip = request.remote_addr
+    if not check_rate_limit(f'process:{client_ip}', max_requests=10, window=60):
+        return jsonify({'error': '请求过于频繁，请稍后再试'}), 429
+
     data = request.json
     filename = data.get('filename')
-    
+
     if not filename:
         return jsonify({'error': '缺少文件名'}), 400
-    
+
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    
+
     if not os.path.exists(filepath):
         return jsonify({'error': '文件不存在'}), 404
-    
+
     try:
-        # 步骤1: 语音转文本（火山引擎已内置说话人分离）
-        transcriber = SpeechToText()
-        all_text = transcriber.transcribe(filepath)
-        
-        # 直接根据API返回的speaker_id分配给说话人
-        speaker1_text = []
-        speaker2_text = []
-        for item in all_text:
-            speaker_id = item.get('speaker_id', 1)
-            if speaker_id == 1:
-                speaker1_text.append(item)
-            else:
-                speaker2_text.append(item)
-        
-        # 步骤3: AI分析
-        analyzer = AIAnalyzer()
-        analysis_result = analyzer.analyze_conversation(speaker1_text, speaker2_text)
-        
-        # 保存分析记录到数据库
-        try:
-            # 生成客户标签
-            tags = analyzer.generate_customer_tags(analysis_result)
-            
-            # 提取关键信息
-            summary = analysis_result.get('总结', '') if isinstance(analysis_result.get('总结'), str) else ''
-            customer_grade = analysis_result.get('客户评级', {}).get('综合等级', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
-            intention_level = analysis_result.get('客户评级', {}).get('购房意向强度', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
-            purchase_stage = analysis_result.get('购房阶段', {}).get('当前阶段', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
-            
-            # 提取原始文件名（去掉 file_id 前缀）
-            original_filename = filename
-            if '_' in filename:
-                parts = filename.split('_', 1)
-                if len(parts) == 2 and len(parts[0]) == 36:  # UUID 长度为 36
-                    original_filename = parts[1]
-            
-            record = {
-                'filename': original_filename,
-                'source': '录音文件',
-                'customer_grade': customer_grade,
-                'intention_level': intention_level,
-                'purchase_stage': purchase_stage,
-                'summary': summary,
-                'analysis_data': analysis_result,
-                'tags': tags,
-                'speaker1_data': speaker1_text,
-                'speaker2_data': speaker2_text
-            }
-            
-            record_id = database.save_record(record)
-            logger.info(f'分析记录保存成功，记录ID: {record_id}')
-        except Exception as e:
-            logger.error(f'保存分析记录失败: {str(e)}')
-            import traceback
-            logger.error(traceback.format_exc())
-        
-        return jsonify({
-            'success': True,
-            'speaker1': speaker1_text,
-            'speaker2': speaker2_text,
-            'analysis': analysis_result
-        })
-        
+        # 提取原始文件名（去掉 file_id 前缀）
+        original_filename = filename
+        if '_' in filename:
+            parts = filename.split('_', 1)
+            if len(parts) == 2 and len(parts[0]) == 36:  # UUID 长度为 36
+                original_filename = parts[1]
+
+        result = process_audio_file(filepath, source='录音文件', filename_display=original_filename)
+        return jsonify(result)
+
     except Exception as e:
         return jsonify({'error': f'处理失败: {str(e)}'}), 500
 
 
 def process_single_file(file_info, batch_id, file_index):
     """处理单个文件的函数，用于后台线程"""
-    from services.audio_processor import AudioProcessor
-    from services.speech_to_text import SpeechToText
-    from services.ai_analyzer import AIAnalyzer
-    
     filepath = file_info['filepath']
     file_id = file_info['file_id']
     original_filename = file_info['original_filename']
-    
+
     result = {
         'file_id': file_id,
         'original_filename': original_filename,
@@ -227,73 +276,36 @@ def process_single_file(file_info, batch_id, file_index):
         'speaker2': None,
         'analysis': None
     }
-    
+
     try:
-        # 语音转文本（火山引擎已内置说话人分离）
-        transcriber = SpeechToText()
-        all_text = transcriber.transcribe(filepath)
-        
-        # 直接根据API返回的speaker_id分配给说话人
-        speaker1_text = []
-        speaker2_text = []
-        for item in all_text:
-            speaker_id = item.get('speaker_id', 1)
-            if speaker_id == 1:
-                speaker1_text.append(item)
-            else:
-                speaker2_text.append(item)
-        
-        analyzer = AIAnalyzer()
-        analysis_result = analyzer.analyze_conversation(speaker1_text, speaker2_text)
-        
-        result['speaker1'] = speaker1_text
-        result['speaker2'] = speaker2_text
-        result['analysis'] = analysis_result
+        process_result = process_audio_file(filepath, source='录音文件', filename_display=original_filename)
+
+        result['speaker1'] = process_result['speaker1']
+        result['speaker2'] = process_result['speaker2']
+        result['analysis'] = process_result['analysis']
         result['status'] = 'completed'
-        
-        # 保存分析记录到数据库
-        try:
-            tags = analyzer.generate_customer_tags(analysis_result)
-            
-            summary = analysis_result.get('总结', '') if isinstance(analysis_result.get('总结'), str) else ''
-            customer_grade = analysis_result.get('客户评级', {}).get('综合等级', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
-            intention_level = analysis_result.get('客户评级', {}).get('购房意向强度', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
-            purchase_stage = analysis_result.get('购房阶段', {}).get('当前阶段', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
-            
-            record = {
-                'filename': original_filename,
-                'source': '录音文件',
-                'customer_grade': customer_grade,
-                'intention_level': intention_level,
-                'purchase_stage': purchase_stage,
-                'summary': summary,
-                'analysis_data': analysis_result,
-                'tags': tags,
-                'speaker1_data': speaker1_text,
-                'speaker2_data': speaker2_text
-            }
-            
-            database.save_record(record)
-        except Exception as e:
-            logger.warning(f'保存分析记录失败: {str(e)}')
-        
+
     except Exception as e:
         result['status'] = 'failed'
         result['error'] = str(e)
-    
+
     with batch_lock:
         if batch_id in batch_processes:
             batch_processes[batch_id]['results'][file_index] = result
             batch_processes[batch_id]['completed'] += 1
             if batch_processes[batch_id]['completed'] >= batch_processes[batch_id]['total']:
                 batch_processes[batch_id]['status'] = 'completed'
-    
+
     return result
 
 
 @app.route('/api/batch-process', methods=['POST'])
 def batch_process():
     """批量处理文件接口"""
+    client_ip = request.remote_addr
+    if not check_rate_limit(f'batch:{client_ip}', max_requests=3, window=300):
+        return jsonify({'error': '批量处理请求过于频繁，请稍后再试'}), 429
+
     data = request.json
     batch_id = data.get('batch_id')
     file_ids = data.get('file_ids', [])
@@ -316,12 +328,7 @@ def batch_process():
         }
     
     for index, file_info in enumerate(files_info):
-        thread = threading.Thread(
-            target=process_single_file,
-            args=(file_info, batch_id, index)
-        )
-        thread.daemon = True
-        thread.start()
+        batch_executor.submit(process_single_file, file_info, batch_id, index)
     
     return jsonify({
         'success': True,
@@ -353,8 +360,6 @@ def get_batch_status(batch_id):
 @app.route('/api/batch-export/<batch_id>', methods=['GET'])
 def batch_export(batch_id):
     """批量导出分析结果为ZIP文件"""
-    from services.pdf_generator import generate_pdf_report
-    
     with batch_lock:
         if batch_id not in batch_processes:
             return jsonify({'error': '批量任务不存在'}), 404
@@ -405,8 +410,6 @@ def batch_export(batch_id):
 @app.route('/api/analyze', methods=['POST'])
 def analyze_text():
     """分析文本内容"""
-    from services.ai_analyzer import AIAnalyzer
-    
     data = request.json
     speaker1_text = data.get('speaker1', '')
     speaker2_text = data.get('speaker2', '')
@@ -430,41 +433,38 @@ def analyze_text():
 @app.route('/api/analyze-transcript', methods=['POST'])
 def analyze_transcript():
     """直接分析转录文本（跳过语音转文本步骤）"""
-    from services.ai_analyzer import AIAnalyzer
-    
+    client_ip = request.remote_addr
+    if not check_rate_limit(f'analyze:{client_ip}', max_requests=10, window=60):
+        return jsonify({'error': '请求过于频繁，请稍后再试'}), 429
+
     data = request.json
     transcript = data.get('transcript', '')
-    
+
     if not transcript:
         return jsonify({'error': '缺少转录文本'}), 400
-    
+
     try:
         # 解析转录文本，分离两个说话人
         speaker1_text, speaker2_text = parse_transcript(transcript)
-        
+
         # AI分析
         analyzer = AIAnalyzer()
         result = analyzer.analyze_conversation(speaker1_text, speaker2_text)
-        
+
         # 保存分析记录到数据库
+        record_id = None
         try:
-            from services.ai_analyzer import AIAnalyzer
-            
-            # 生成客户标签
-            analyzer = AIAnalyzer()
             tags = analyzer.generate_customer_tags(result)
-            
-            # 提取关键信息 - 使用正确的键名
-            summary = result.get('通话概要', {}).get('核心内容', '') if isinstance(result.get('通话概要'), dict) else ''
+
+            summary = result.get('总结', '') if isinstance(result.get('总结'), str) else ''
             customer_grade = result.get('客户评级', {}).get('综合等级', '') if isinstance(result.get('客户评级'), dict) else ''
             intention_level = result.get('客户评级', {}).get('购房意向强度', '') if isinstance(result.get('客户评级'), dict) else ''
             purchase_stage = result.get('购房阶段', {}).get('当前阶段', '') if isinstance(result.get('购房阶段'), dict) else ''
-            
+
             # 生成文件名：文本分析_当前时间（精确至毫秒）
-            from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]  # 精确到毫秒
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
             filename = f'文本分析_{timestamp}'
-            
+
             record = {
                 'filename': filename,
                 'source': '录音文本',
@@ -477,21 +477,20 @@ def analyze_transcript():
                 'speaker1_data': speaker1_text,
                 'speaker2_data': speaker2_text
             }
-            
-            database.save_record(record)
-            logger.info(f'文本分析记录保存成功')
+
+            record_id = database.save_record(record)
+            logger.info(f'文本分析记录保存成功，记录ID: {record_id}')
         except Exception as e:
             logger.error(f'保存分析记录失败: {str(e)}')
-            import traceback
-            logger.error(traceback.format_exc())
-        
+
         return jsonify({
             'success': True,
             'speaker1': speaker1_text,
             'speaker2': speaker2_text,
-            'analysis': result
+            'analysis': result,
+            'record_id': record_id
         })
-        
+
     except Exception as e:
         return jsonify({'error': f'分析失败: {str(e)}'}), 500
 
@@ -557,9 +556,6 @@ def parse_transcript(transcript):
 @app.route('/api/export-pdf', methods=['POST'])
 def export_pdf():
     """导出PDF报告"""
-    from services.pdf_generator import generate_pdf_report
-    from io import BytesIO
-    
     data = request.json
     analysis = data.get('analysis', {})
     speaker1 = data.get('speaker1', [])
@@ -658,9 +654,9 @@ def search_history():
     """搜索筛选记录"""
     try:
         data = request.json or {}
-        
+
         keyword = data.get('keyword', '')
-        
+
         filters = {}
         if data.get('grade'):
             filters['customer_grade'] = data['grade']
@@ -670,16 +666,148 @@ def search_history():
             filters['start_date'] = data['start_date']
         if data.get('end_date'):
             filters['end_date'] = data['end_date']
-        
+
         records = database.search_records(keyword=keyword, filters=filters)
-        
+
         return jsonify({
             'records': records,
             'total': len(records)
         })
-        
+
     except Exception as e:
         return jsonify({'error': f'搜索失败: {str(e)}'}), 500
+
+
+@app.route('/api/history/export-csv', methods=['POST'])
+def export_csv():
+    """导出历史记录为CSV"""
+    import csv
+    from io import StringIO
+
+    try:
+        data = request.json or {}
+        ids = data.get('ids', [])
+
+        if ids:
+            records = []
+            for record_id in ids:
+                record = database.get_record_by_id(record_id)
+                if record:
+                    records.append(record)
+        else:
+            # 导出所有记录（带筛选条件）
+            keyword = data.get('keyword', '')
+            filters = {}
+            if data.get('grade'):
+                filters['customer_grade'] = data['grade']
+            if data.get('intention'):
+                filters['intention_level'] = data['intention']
+            if data.get('start_date'):
+                filters['start_date'] = data['start_date']
+            if data.get('end_date'):
+                filters['end_date'] = data['end_date']
+            records = database.search_records(keyword=keyword, filters=filters)
+
+        if not records:
+            return jsonify({'error': '没有可导出的记录'}), 400
+
+        # 创建CSV
+        output = StringIO()
+        output.write('\ufeff')  # BOM for Excel
+        writer = csv.writer(output)
+
+        # 写入表头
+        writer.writerow([
+            'ID', '文件名', '数据来源', '客户等级', '意向强度',
+            '购房阶段', '标签', '总结', '创建时间'
+        ])
+
+        # 写入数据
+        for record in records:
+            tags = record.get('tags', [])
+            if isinstance(tags, list):
+                tags_str = '、'.join(tags)
+            else:
+                tags_str = str(tags)
+
+            writer.writerow([
+                record.get('id', ''),
+                record.get('filename', ''),
+                record.get('source', ''),
+                record.get('customer_grade', ''),
+                record.get('intention_level', ''),
+                record.get('purchase_stage', ''),
+                tags_str,
+                record.get('summary', ''),
+                record.get('created_at', '')
+            ])
+
+        output.seek(0)
+
+        return send_file(
+            BytesIO(output.getvalue().encode('utf-8-sig')),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'分析记录_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        )
+
+    except Exception as e:
+        return jsonify({'error': f'导出失败: {str(e)}'}), 500
+
+
+@app.route('/api/history/<int:id>', methods=['PUT'])
+def update_history(id):
+    """更新记录"""
+    try:
+        data = request.json
+
+        if not data:
+            return jsonify({'error': '缺少更新数据'}), 400
+
+        success = database.update_record(id, data)
+
+        if not success:
+            return jsonify({'error': '记录不存在或更新失败'}), 404
+
+        return jsonify({
+            'success': True,
+            'message': '记录更新成功'
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'更新失败: {str(e)}'}), 500
+
+
+@app.route('/api/history/<int:id>/followups', methods=['GET'])
+def get_followups(id):
+    """获取跟进记录"""
+    try:
+        followups = database.get_followups(id)
+        return jsonify({'followups': followups})
+    except Exception as e:
+        return jsonify({'error': f'获取跟进记录失败: {str(e)}'}), 500
+
+
+@app.route('/api/history/<int:id>/followups', methods=['POST'])
+def add_followup(id):
+    """添加跟进记录"""
+    try:
+        data = request.json
+        content = data.get('content', '')
+
+        if not content:
+            return jsonify({'error': '跟进内容不能为空'}), 400
+
+        followup_id = database.add_followup(id, content)
+
+        return jsonify({
+            'success': True,
+            'message': '跟进记录添加成功',
+            'followup_id': followup_id
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'添加跟进记录失败: {str(e)}'}), 500
 
 
 @app.route('/api/history/compare', methods=['GET'])
@@ -965,6 +1093,10 @@ def get_concerns_ranking():
 @app.route('/api/process-url', methods=['POST'])
 def process_audio_url():
     """处理音频URL（使用火山引擎长音频API）"""
+    client_ip = request.remote_addr
+    if not check_rate_limit(f'url:{client_ip}', max_requests=5, window=60):
+        return jsonify({'error': '请求过于频繁，请稍后再试'}), 429
+
     data = request.json
     audio_url = data.get('url')
     
@@ -972,8 +1104,6 @@ def process_audio_url():
         return jsonify({'error': '缺少音频URL'}), 400
     
     try:
-        from services.speech_to_text import SpeechToText
-        
         # 生成内部任务ID
         internal_task_id = str(uuid.uuid4())
         
@@ -1008,9 +1138,6 @@ def process_audio_url():
 def get_task_status(task_id):
     """查询长音频任务状态"""
     try:
-        from services.speech_to_text import SpeechToText
-        from services.ai_analyzer import AIAnalyzer
-        
         with long_audio_lock:
             task_info = long_audio_tasks.get(task_id)
         
@@ -1026,7 +1153,7 @@ def get_task_status(task_id):
         if result['status'] == 'success':
             # 任务完成，进行AI分析
             all_text = transcriber._format_volc_result(result['result'])
-            
+
             # 根据speaker_id分配给说话人
             speaker1_text = []
             speaker2_text = []
@@ -1036,20 +1163,20 @@ def get_task_status(task_id):
                     speaker1_text.append(item)
                 else:
                     speaker2_text.append(item)
-            
+
             # AI分析
             analyzer = AIAnalyzer()
             analysis_result = analyzer.analyze_conversation(speaker1_text, speaker2_text)
-            
+
             # 保存分析记录
             try:
                 tags = analyzer.generate_customer_tags(analysis_result)
-                
+
                 summary = analysis_result.get('总结', '') if isinstance(analysis_result.get('总结'), str) else ''
                 customer_grade = analysis_result.get('客户评级', {}).get('综合等级', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
                 intention_level = analysis_result.get('客户评级', {}).get('购房意向强度', '') if isinstance(analysis_result.get('客户评级'), dict) else ''
                 purchase_stage = analysis_result.get('购房阶段', {}).get('当前阶段', '') if isinstance(analysis_result.get('购房阶段'), dict) else ''
-                
+
                 record = {
                     'filename': task_info['audio_url'],
                     'source': '录音链接',
@@ -1062,16 +1189,16 @@ def get_task_status(task_id):
                     'speaker1_data': speaker1_text,
                     'speaker2_data': speaker2_text
                 }
-                
+
                 database.save_record(record)
-                logger.info(f'URL音频分析记录保存成功')
+                logger.info('URL音频分析记录保存成功')
             except Exception as e:
                 logger.error(f'保存URL音频分析记录失败: {str(e)}')
-            
+
             # 更新任务状态
             with long_audio_lock:
                 task_info['status'] = 'completed'
-            
+
             # 返回完整结果
             return jsonify({
                 'status': 'success',
@@ -1105,6 +1232,15 @@ def get_task_status(task_id):
             'error': f'查询失败: {str(e)}'
         }), 500
 
+
+def cleanup_old_files():
+    """清理旧的上传文件"""
+    upload_folder = app.config['UPLOAD_FOLDER']
+    database.cleanup_old_files(upload_folder, max_age_days=7)
+
+
+# 启动时清理旧文件
+cleanup_old_files()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

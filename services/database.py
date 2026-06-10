@@ -46,10 +46,10 @@ def get_connection():
 
 
 def init_db():
-    """初始化数据库，创建表结构"""
+    """初始化数据库，创建表结构和索引"""
     with get_connection() as conn:
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS analysis_records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,11 +66,7 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS analysis_records_backup AS SELECT * FROM analysis_records WHERE 1=0
-        ''')
-        
+
         try:
             cursor.execute('PRAGMA table_info(analysis_records)')
             columns = [col[1] for col in cursor.fetchall()]
@@ -80,9 +76,14 @@ def init_db():
                 cursor.execute('ALTER TABLE analysis_records ADD COLUMN speaker2_data TEXT')
             if 'source' not in columns:
                 cursor.execute("ALTER TABLE analysis_records ADD COLUMN source TEXT DEFAULT '录音文件'")
-        except:
-            pass
-        
+        except Exception as e:
+            logger.warning(f"检查表结构时出错: {e}")
+
+        # 创建索引以提高查询性能
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON analysis_records(created_at)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_customer_grade ON analysis_records(customer_grade)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_intention_level ON analysis_records(intention_level)')
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS customer_tags (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,7 +91,19 @@ def init_db():
                 count INTEGER DEFAULT 0
             )
         ''')
-        
+
+        # 创建跟进记录表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS followups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                record_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (record_id) REFERENCES analysis_records(id) ON DELETE CASCADE
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_followups_record_id ON followups(record_id)')
+
         conn.commit()
         logger.info("数据库初始化完成")
 
@@ -484,8 +497,129 @@ def get_tags_with_date_filter(start_date=None, end_date=None):
         # 转换为列表并排序
         result = [{'tag_name': tag, 'count': count} for tag, count in tag_counts.items()]
         result.sort(key=lambda x: (-x['count'], x['tag_name']))
-        
+
         return result
+
+
+def update_record(record_id, data):
+    """
+    更新记录
+
+    Args:
+        record_id: 记录ID
+        data: 要更新的字段字典
+
+    Returns:
+        bool: 更新成功返回True
+    """
+    allowed_fields = ['customer_grade', 'intention_level', 'purchase_stage', 'summary', 'tags']
+    updates = []
+    params = []
+
+    for field in allowed_fields:
+        if field in data:
+            updates.append(f"{field} = ?")
+            if field == 'tags' and isinstance(data[field], list):
+                params.append(','.join(data[field]))
+            else:
+                params.append(data[field])
+
+    if not updates:
+        return False
+
+    params.append(record_id)
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f'''
+            UPDATE analysis_records
+            SET {', '.join(updates)}
+            WHERE id = ?
+        ''', params)
+        conn.commit()
+
+        if cursor.rowcount > 0:
+            logger.info(f"更新记录成功，ID: {record_id}")
+            return True
+        return False
+
+
+def get_followups(record_id):
+    """
+    获取记录的跟进记录
+
+    Args:
+        record_id: 记录ID
+
+    Returns:
+        list: 跟进记录列表
+    """
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, record_id, content, created_at
+            FROM followups
+            WHERE record_id = ?
+            ORDER BY created_at DESC
+        ''', (record_id,))
+
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def add_followup(record_id, content):
+    """
+    添加跟进记录
+
+    Args:
+        record_id: 记录ID
+        content: 跟进内容
+
+    Returns:
+        int: 新跟进记录的ID
+    """
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO followups (record_id, content, created_at)
+            VALUES (?, ?, ?)
+        ''', (record_id, content, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+
+        followup_id = cursor.lastrowid
+        conn.commit()
+        logger.info(f"添加跟进记录成功，ID: {followup_id}")
+        return followup_id
+
+
+def cleanup_old_files(upload_folder, max_age_days=7):
+    """
+    清理旧的上传文件
+
+    Args:
+        upload_folder: 上传目录路径
+        max_age_days: 文件最大保留天数
+    """
+    import time
+
+    if not os.path.exists(upload_folder):
+        return
+
+    current_time = time.time()
+    max_age_seconds = max_age_days * 24 * 60 * 60
+    cleaned_count = 0
+
+    try:
+        for filename in os.listdir(upload_folder):
+            filepath = os.path.join(upload_folder, filename)
+            if os.path.isfile(filepath):
+                file_age = current_time - os.path.getmtime(filepath)
+                if file_age > max_age_seconds:
+                    os.remove(filepath)
+                    cleaned_count += 1
+
+        if cleaned_count > 0:
+            logger.info(f"清理了 {cleaned_count} 个过期文件")
+    except Exception as e:
+        logger.error(f"清理文件时出错: {e}")
 
 
 init_db()

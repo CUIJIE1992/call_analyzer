@@ -28,15 +28,18 @@ class SpeechToText:
     
     def __init__(self):
         # 火山引擎API配置
-        self.volc_api_key = os.getenv('VOLC_API_KEY', '5dcac6d7-6ed5-44eb-9076-a02c43d216dc')
+        self.volc_api_key = os.getenv('VOLC_API_KEY')
         self.volc_app_id = os.getenv('VOLC_APP_ID', '')
         self.use_long_audio = os.getenv('VOLC_USE_LONG_AUDIO', 'false').lower() == 'true'
-        
+
         # 飞书API配置（备用）
         self.feishu_app_id = os.getenv('FEISHU_APP_ID', '')
         self.feishu_app_secret = os.getenv('FEISHU_APP_SECRET', '')
         self.tenant_access_token = None
         self.token_expire_time = 0
+
+        if not self.volc_api_key and not (self.feishu_app_id and self.feishu_app_secret):
+            logger.warning("未配置 VOLC_API_KEY 或飞书API，将使用模拟数据")
     
     def transcribe(self, audio_path):
         """

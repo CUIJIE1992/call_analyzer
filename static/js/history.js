@@ -35,16 +35,21 @@ async function loadHistoryData() {
         const result = await response.json();
         
         if (result && result.records) {
-            historyData = result.records.map(record => ({
-                id: record.id,
-                time: record.created_at,
-                filename: record.filename,
-                source: record.source || '录音文件',
-                rating: record.customer_grade || 'C',
-                intention: mapIntentionLevel(record.intention_level),
-                stage: record.purchase_stage || '未知',
-                tags: record.tags || []
-            }));
+            historyData = result.records.map(record => {
+                const keyInfo = (record.analysis_data && (record.analysis_data['关键信息提取'] || record.analysis_data['关键信息'])) || {};
+                const phone = keyInfo['客户联系方式'] || keyInfo['联系方式'] || '';
+                return {
+                    id: record.id,
+                    time: record.created_at,
+                    filename: record.filename,
+                    source: record.source || '录音文件',
+                    rating: record.customer_grade || 'C',
+                    intention: mapIntentionLevel(record.intention_level),
+                    stage: record.purchase_stage || '未知',
+                    phone: (phone && phone !== '暂无') ? phone : '',
+                    tags: record.tags || []
+                };
+            });
         } else {
             historyData = [];
         }
@@ -86,6 +91,7 @@ function bindEvents() {
     document.getElementById('compareBtn').addEventListener('click', handleCompare);
     document.getElementById('batchDeleteBtn').addEventListener('click', handleBatchDelete);
     document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+    document.getElementById('exportCsvBtn').addEventListener('click', handleExportCsv);
 
     document.getElementById('searchKeyword').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -97,7 +103,7 @@ function bindEvents() {
 function showLoading() {
     const tbody = document.getElementById('historyTableBody');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">加载中...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">加载中...</td></tr>';
     }
 }
 
@@ -188,13 +194,14 @@ function renderTable() {
     tbody.innerHTML = pageData.map(item => `
         <tr class="${selectedIds.includes(item.id) ? 'selected' : ''}" data-id="${item.id}">
             <td class="checkbox-cell">
-                <input type="checkbox" 
-                       ${selectedIds.includes(item.id) ? 'checked' : ''} 
+                <input type="checkbox"
+                       ${selectedIds.includes(item.id) ? 'checked' : ''}
                        onchange="handleSelectItem(${item.id}, this.checked)">
             </td>
             <td class="time-cell">${item.time}</td>
             <td class="filename-cell" title="${item.filename}" onclick="viewDetail(${item.id})">${item.filename}</td>
             <td><span class="source-badge ${getSourceClass(item.source)}">${item.source}</span></td>
+            <td class="phone-cell">${item.phone || '-'}</td>
             <td>
                 <span class="rating-badge grade-${item.rating.toLowerCase().replace('类', '')}">
                     ${item.rating.replace('类', '')}
@@ -548,6 +555,46 @@ function showSuccess(message) {
         successDiv.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => successDiv.remove(), 300);
     }, 3000);
+}
+
+// 导出CSV
+async function handleExportCsv() {
+    try {
+        const data = {
+            ids: selectedIds.length > 0 ? selectedIds : null,
+            keyword: document.getElementById('searchKeyword').value.trim(),
+            grade: document.getElementById('filterRating').value,
+            intention: document.getElementById('filterIntention').value,
+            start_date: document.getElementById('filterDateStart').value,
+            end_date: document.getElementById('filterDateEnd').value
+        };
+
+        const response = await fetch('/api/history/export-csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || '导出失败');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `分析记录_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        showSuccess('导出成功');
+    } catch (error) {
+        console.error('导出CSV失败:', error);
+        showError('导出失败: ' + error.message);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -1207,7 +1207,7 @@ function displayKeyInfo(keyInfo) {
     if (!container || !keyInfo) return;
     
     const items = [
-        { label: '📞 联系方式', value: keyInfo['联系方式'] },
+        { label: '📞 客户手机', value: keyInfo['客户联系方式'] || keyInfo['联系方式'] },
         { label: '🏠 到访意向', value: keyInfo['到访意向'] },
         { label: '📅 看房安排', value: keyInfo['看房安排'] },
         { label: '📝 特殊需求', value: keyInfo['特殊需求'] }
@@ -1219,58 +1219,6 @@ function displayKeyInfo(keyInfo) {
             <div class="key-info-value">${item.value || '暂无信息'}</div>
         </div>
     `).join('');
-}
-
-// 显示跟进建议
-function displayFollowup(followup) {
-    const container = document.getElementById('followupContent');
-    if (!container || !followup) return;
-    
-    let html = '';
-    
-    if (followup['推荐话术'] && followup['推荐话术'].length > 0) {
-        html += `
-            <div class="followup-section">
-                <h4>💬 推荐话术要点</h4>
-                <ul class="followup-list">
-                    ${followup['推荐话术'].map(s => `<li>${s}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    if (followup['卖点强调'] && followup['卖点强调'].length > 0) {
-        html += `
-            <div class="followup-section">
-                <h4>⭐ 差异化卖点强调</h4>
-                <ul class="followup-list">
-                    ${followup['卖点强调'].map(s => `<li>${s}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    if (followup['异议处理'] && followup['异议处理'].length > 0) {
-        html += `
-            <div class="followup-section">
-                <h4>🛡️ 异议处理建议</h4>
-                <ul class="followup-list">
-                    ${followup['异议处理'].map(s => `<li>${s}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    if (followup['下一步计划']) {
-        html += `
-            <div class="followup-section">
-                <h4>📋 下一步跟进计划</h4>
-                <div class="followup-plan">${followup['下一步计划']}</div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html || '<div style="color:var(--text-secondary);">暂无跟进建议</div>';
 }
 
 // 显示列表
@@ -1513,12 +1461,12 @@ function generateReport() {
     const keyInfo = analysis['关键信息提取'] || analysis['关键信息'];
     if (keyInfo) {
         report += '【关键信息】\n';
-        report += `  联系方式: ${keyInfo['联系方式'] || '暂无'}\n`;
+        report += `  客户手机: ${keyInfo['客户联系方式'] || keyInfo['联系方式'] || '暂无'}\n`;
         report += `  到访意向: ${keyInfo['到访意向'] || '暂无'}\n`;
         report += `  看房安排: ${keyInfo['看房安排'] || '暂无'}\n`;
         report += `  特殊需求: ${keyInfo['特殊需求'] || '暂无'}\n\n`;
     }
-    
+
     // 总结
     report += '【分析总结】\n';
     report += `${analysis['总结'] || '暂无总结'}\n`;
@@ -2114,12 +2062,12 @@ function generateSingleReport(result) {
     const keyInfo = analysis['关键信息提取'] || analysis['关键信息'];
     if (keyInfo) {
         report += '\n【关键信息】\n';
-        report += `  联系方式: ${keyInfo['联系方式'] || '暂无'}\n`;
+        report += `  客户手机: ${keyInfo['客户联系方式'] || keyInfo['联系方式'] || '暂无'}\n`;
         report += `  到访意向: ${keyInfo['到访意向'] || '暂无'}\n`;
         report += `  看房安排: ${keyInfo['看房安排'] || '暂无'}\n`;
         report += `  特殊需求: ${keyInfo['特殊需求'] || '暂无'}\n`;
     }
-    
+
     if (analysis['总结']) {
         report += `\n【总结】\n${analysis['总结']}\n`;
     }

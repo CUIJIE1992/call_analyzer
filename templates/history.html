@@ -5,623 +5,166 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>历史记录 - 购房意向智能分析系统</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        .history-section {
-            padding: 30px 50px;
-        }
-        .filter-card {
-            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-            border-radius: var(--radius-lg);
-            padding: 25px;
-            margin-bottom: 25px;
-        }
-        .filter-row {
-            display: flex;
-            flex-wrap: nowrap;
-            gap: 12px;
-            align-items: flex-end;
-            justify-content: space-between;
-        }
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex: 1;
-            min-width: 0;
-        }
-        .filter-group input::placeholder {
-            font-size: 0.9em;
-        }
-        .filter-group label {
-            font-size: 0.9em;
-            color: var(--text-secondary);
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        .filter-group input,
-        .filter-group select {
-            padding: 10px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: var(--radius-sm);
-            font-size: 0.95em;
-            transition: all 0.3s ease;
-            width: 100%;
-            min-width: 0;
-        }
-        .filter-group input:focus,
-        .filter-group select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        .filter-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-        }
-        .table-wrapper {
-            background: white;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-        .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 25px;
-            background: var(--bg-light);
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .table-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .table-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .data-table th,
-        .data-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        .data-table th {
-            background: var(--bg-light);
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 0.85em;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .data-table tbody tr {
-            transition: all 0.3s ease;
-        }
-        .data-table tbody tr:hover {
-            background: #f8f9ff;
-            border-bottom: 3px solid var(--primary-color);
-        }
-        .data-table tbody tr.selected {
-            background: #e8ebff;
-        }
-        .checkbox-cell {
-            width: 50px;
-            text-align: center;
-        }
-        .checkbox-cell input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: var(--primary-color);
-        }
-        .time-cell {
-            color: var(--text-secondary);
-            font-size: 0.85em;
-            white-space: nowrap;
-        }
-        .filename-cell {
-            max-width: 180px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-weight: 500;
-            font-size: 0.92em;
-            cursor: pointer;
-            color: var(--primary-color);
-            transition: color 0.2s;
-        }
-        .filename-cell:hover {
-            color: #1d4ed8;
-            text-decoration: underline;
-        }
-        .rating-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.82em;
-            font-weight: 600;
-        }
-        .rating-badge.grade-a {
-            background: linear-gradient(135deg, #ffd700, #ffb700);
-            color: #333;
-        }
-        .rating-badge.grade-b {
-            background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
-            color: #333;
-        }
-        .rating-badge.grade-c {
-            background: linear-gradient(135deg, #cd7f32, #b87333);
-            color: white;
-        }
-        .intention-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.82em;
-            font-weight: 600;
-        }
-        .intention-badge.high {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-        }
-        .intention-badge.medium {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-        }
-        .intention-badge.low {
-            background: linear-gradient(135deg, #6b7280, #4b5563);
-            color: white;
-        }
-        .stage-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.82em;
-            background: #e0e7ff;
-            color: var(--primary-color);
-            font-weight: 500;
-        }
-        .stage-badge.stage-single {
-            white-space: nowrap;
-        }
-        .source-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.82em;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        .source-badge.source-file {
-            background: #e0f2fe;
-            color: #0284c7;
-        }
-        .source-badge.source-url {
-            background: #f3e8ff;
-            color: #7c3aed;
-        }
-        .source-badge.source-text {
-            background: #fef3c7;
-            color: #d97706;
-        }
-        .tags-cell {
-            max-width: 220px;
-        }
-        .tag-item {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.78em;
-            margin: 1px;
-            line-height: 1.6;
-        }
-        .tag-item.tag-visit {
-            background: #dcfce7;
-            color: #16a34a;
-        }
-        .tag-item.tag-contact {
-            background: #f3e8ff;
-            color: #7c3aed;
-        }
-        .tag-item.tag-interest {
-            background: #fef3c7;
-            color: #d97706;
-        }
-        .tag-item.tag-need {
-            background: #dbeafe;
-            color: #2563eb;
-        }
-        .action-btns {
-            display: flex;
-            gap: 5px;
-        }
-        .action-btn {
-            padding: 4px 10px;
-            border: none;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            font-size: 0.82em;
-            transition: all 0.3s ease;
-        }
-        .action-btn.view {
-            background: #e0e7ff;
-            color: var(--primary-color);
-        }
-        .action-btn.view:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-        .action-btn.delete {
-            background: #fee2e2;
-            color: var(--danger-color);
-        }
-        .action-btn.delete:hover {
-            background: var(--danger-color);
-            color: white;
-        }
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            padding: 25px;
-            border-top: 1px solid #f0f0f0;
-        }
-        .pagination-info {
-            color: var(--text-secondary);
-            font-size: 0.9em;
-            margin-right: 20px;
-        }
-        .pagination-btns {
-            display: flex;
-            gap: 5px;
-        }
-        .page-btn {
-            padding: 8px 14px;
-            border: 1px solid #e0e0e0;
-            background: white;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9em;
-        }
-        .page-btn:hover:not(:disabled) {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-        }
-        .page-btn.active {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-        .page-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-secondary);
-        }
-        .empty-state-icon {
-            font-size: 4em;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-        .empty-state h3 {
-            margin-bottom: 10px;
-            color: var(--text-primary);
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-        .modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        .modal {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: var(--shadow-lg);
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
-        }
-        .modal-overlay.show .modal {
-            transform: scale(1);
-        }
-        .modal-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .modal-icon {
-            font-size: 2.5em;
-        }
-        .modal-title {
-            font-size: 1.3em;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .modal-body {
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: 25px;
-        }
-        .modal-footer {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .compare-modal .modal {
-            max-width: 900px;
-        }
-        .compare-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-        .compare-card {
-            background: var(--bg-light);
-            border-radius: var(--radius-md);
-            padding: 20px;
-        }
-        .compare-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .compare-card-title {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .compare-card-time {
-            font-size: 0.85em;
-            color: var(--text-secondary);
-        }
-        .compare-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px dashed #e0e0e0;
-        }
-        .compare-item:last-child {
-            border-bottom: none;
-        }
-        .compare-item-label {
-            color: var(--text-secondary);
-            font-size: 0.9em;
-        }
-        .compare-item-value {
-            font-weight: 500;
-            font-size: 0.9em;
-        }
-        .selected-count {
-            background: var(--primary-color);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.85em;
-            margin-left: 5px;
-        }
-        @media (max-width: 992px) {
-            .filter-row {
-                flex-wrap: wrap;
-            }
-            .filter-group {
-                flex: 1 1 calc(33.333% - 10px);
-                min-width: 150px;
-            }
-        }
-        @media (max-width: 768px) {
-            .history-section {
-                padding: 20px;
-            }
-            .filter-row {
-                flex-direction: column;
-                flex-wrap: nowrap;
-            }
-            .filter-group {
-                width: 100%;
-                flex: none;
-            }
-            .filter-group input,
-            .filter-group select {
-                width: 100%;
-            }
-            .filter-actions {
-                width: 100%;
-                margin-top: 15px;
-                padding-top: 15px;
-            }
-            .data-table {
-                display: block;
-                overflow-x: auto;
-            }
-            .table-header {
-                flex-direction: column;
-                gap: 15px;
-                align-items: flex-start;
-            }
-        }
-    </style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <span class="logo-icon">🏠</span>
-                    <div class="logo-text">
-                        <h1>购房意向智能分析系统</h1>
-                        <p class="subtitle">AI驱动的房产销售洞察与客户跟进策略</p>
+    <!-- Mobile Sidebar Toggle -->
+    <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
+        <svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="sidebar-brand">
+                    <div class="sidebar-brand-icon">🏠</div>
+                    <div class="sidebar-brand-text">
+                        <span class="sidebar-brand-name">购房意向分析</span>
+                        <span class="sidebar-brand-desc">AI Smart Analysis</span>
                     </div>
-                </div>
-                <div class="header-badge">
-                    <span class="badge-item">🎯 客户评级</span>
-                    <span class="badge-item">📊 意向分析</span>
-                    <span class="badge-item">💡 跟进策略</span>
-                </div>
+                </a>
             </div>
-            <nav class="main-nav">
-                <div class="nav-container">
-                    <a href="/" class="nav-item">
-                        <span class="nav-icon">🏠</span>
-                        <span>首页</span>
-                    </a>
-                    <a href="/history" class="nav-item active">
-                        <span class="nav-icon">📋</span>
-                        <span>历史记录</span>
-                    </a>
-                    <a href="/dashboard" class="nav-item">
-                        <span class="nav-icon">📊</span>
-                        <span>数据统计</span>
-                    </a>
-                </div>
+            <nav class="sidebar-nav">
+                <a href="/" class="sidebar-nav-item">
+                    <svg class="nav-icon-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/><polyline points="9,22 9,12 15,12 15,22" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>首页分析</span>
+                </a>
+                <a href="/history" class="sidebar-nav-item active">
+                    <svg class="nav-icon-svg" viewBox="0 0 24 24"><path d="M12 8v4l3 3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="10"/></svg>
+                    <span>历史记录</span>
+                </a>
+                <a href="/dashboard" class="sidebar-nav-item">
+                    <svg class="nav-icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                    <span>数据统计</span>
+                </a>
             </nav>
-        </header>
+            <div class="sidebar-footer">
+                <p class="sidebar-footer-text">AI驱动的房产销售洞察</p>
+            </div>
+        </aside>
 
-        <section class="history-section">
-            <div class="filter-card">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label>关键词搜索</label>
-                        <input type="text" id="searchKeyword" placeholder="搜索文件名或标签...">
-                    </div>
-                    <div class="filter-group">
-                        <label>客户等级</label>
-                        <select id="filterRating">
-                            <option value="">全部等级</option>
-                            <option value="A">A级客户</option>
-                            <option value="B">B级客户</option>
-                            <option value="C">C级客户</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>意向强度</label>
-                        <select id="filterIntention">
-                            <option value="">全部意向</option>
-                            <option value="high">高意向</option>
-                            <option value="medium">中意向</option>
-                            <option value="low">低意向</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>开始日期</label>
-                        <input type="date" id="filterDateStart">
-                    </div>
-                    <div class="filter-group">
-                        <label>结束日期</label>
-                        <input type="date" id="filterDateEnd">
-                    </div>
-                </div>
-                <div class="filter-actions">
-                    <button class="btn btn-primary" id="searchBtn">
-                        <span>🔍</span> 搜索
-                    </button>
-                    <button class="btn btn-secondary" id="resetBtn">
-                        <span>🔄</span> 重置
-                    </button>
-                </div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="main-header">
+                <h1>分析历史记录</h1>
+                <p>查看、筛选和管理所有通话分析记录</p>
             </div>
 
-            <div class="table-wrapper">
-                <div class="table-header">
-                    <div class="table-title">
-                        <span>📋</span>
-                        <span>分析记录列表</span>
-                        <span class="selected-count" id="selectedCount" style="display: none;">已选 0 条</span>
-                    </div>
-                    <div class="table-actions">
-                        <button class="btn btn-secondary" id="compareBtn" disabled>
-                            <span>⚖️</span> 对比选中
-                        </button>
-                        <button class="btn btn-danger" id="batchDeleteBtn" disabled>
-                            <span>🗑️</span> 批量删除
-                        </button>
-                    </div>
-                </div>
+            <div class="main-body">
+                <div class="container">
+                    <section class="history-section">
+                        <div class="filter-card">
+                            <div class="filter-row">
+                                <div class="filter-group">
+                                    <label>关键词搜索</label>
+                                    <input type="text" id="searchKeyword" placeholder="搜索文件名或标签...">
+                                </div>
+                                <div class="filter-group">
+                                    <label>客户等级</label>
+                                    <select id="filterRating">
+                                        <option value="">全部等级</option>
+                                        <option value="A">A级客户</option>
+                                        <option value="B">B级客户</option>
+                                        <option value="C">C级客户</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label>意向强度</label>
+                                    <select id="filterIntention">
+                                        <option value="">全部意向</option>
+                                        <option value="high">高意向</option>
+                                        <option value="medium">中意向</option>
+                                        <option value="low">低意向</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label>开始日期</label>
+                                    <input type="date" id="filterDateStart">
+                                </div>
+                                <div class="filter-group">
+                                    <label>结束日期</label>
+                                    <input type="date" id="filterDateEnd">
+                                </div>
+                            </div>
+                            <div class="filter-actions">
+                                <button class="btn btn-primary" id="searchBtn">
+                                    <span>🔍</span> 搜索
+                                </button>
+                                <button class="btn btn-secondary" id="resetBtn">
+                                    <span>🔄</span> 重置
+                                </button>
+                            </div>
+                        </div>
 
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th class="checkbox-cell">
-                                <input type="checkbox" id="selectAll">
-                            </th>
-                            <th>时间</th>
-                            <th>文件名</th>
-                            <th>数据来源</th>
-                            <th>客户等级</th>
-                            <th>意向强度</th>
-                            <th>购房阶段</th>
-                            <th>标签</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                    </tbody>
-                </table>
+                        <div class="table-wrapper">
+                            <div class="table-header">
+                                <div class="table-title">
+                                    <span>📋</span>
+                                    <span>分析记录列表</span>
+                                    <span class="selected-count" id="selectedCount" style="display: none;">已选 0 条</span>
+                                </div>
+                                <div class="table-actions">
+                                    <button class="btn btn-secondary" id="exportCsvBtn">
+                                        <span>📥</span> 导出CSV
+                                    </button>
+                                    <button class="btn btn-secondary" id="compareBtn" disabled>
+                                        <span>⚖️</span> 对比选中
+                                    </button>
+                                    <button class="btn btn-danger" id="batchDeleteBtn" disabled>
+                                        <span>🗑️</span> 批量删除
+                                    </button>
+                                </div>
+                            </div>
 
-                <div class="empty-state" id="emptyState" style="display: none;">
-                    <div class="empty-state-icon">📭</div>
-                    <h3>暂无历史记录</h3>
-                    <p>开始分析您的第一个通话录音吧</p>
-                    <a href="/" class="btn btn-primary" style="margin-top: 20px;">
-                        <span>📁</span> 去上传文件
-                    </a>
-                </div>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="checkbox-cell">
+                                            <input type="checkbox" id="selectAll">
+                                        </th>
+                                        <th>时间</th>
+                                        <th>文件名</th>
+                                        <th>数据来源</th>
+                                        <th>客户等级</th>
+                                        <th>意向强度</th>
+                                        <th>购房阶段</th>
+                                        <th>标签</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody">
+                                </tbody>
+                            </table>
 
-                <div class="pagination" id="pagination">
-                    <span class="pagination-info" id="paginationInfo">共 0 条记录</span>
-                    <div class="pagination-btns" id="paginationBtns">
+                            <div class="empty-state" id="emptyState" style="display: none;">
+                                <div class="empty-state-icon">📭</div>
+                                <h3>暂无历史记录</h3>
+                                <p>开始分析您的第一个通话录音吧</p>
+                                <a href="/" class="btn btn-primary" style="margin-top: 16px;">
+                                    <span>📁</span> 去上传文件
+                                </a>
+                            </div>
+
+                            <div class="pagination" id="pagination">
+                                <span class="pagination-info" id="paginationInfo">共 0 条记录</span>
+                                <div class="pagination-btns" id="paginationBtns">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="error-message" id="errorMessage" style="display: none;">
+                        <div class="error-content">
+                            <span class="error-icon">⚠️</span>
+                            <span class="error-text" id="errorText"></span>
+                        </div>
+                        <button class="btn btn-small" onclick="hideError()">确定</button>
                     </div>
                 </div>
             </div>
-        </section>
-
-        <div class="error-message" id="errorMessage" style="display: none;">
-            <div class="error-content">
-                <span class="error-icon">⚠️</span>
-                <span class="error-text" id="errorText"></span>
-            </div>
-            <button class="btn btn-small" onclick="hideError()">确定</button>
-        </div>
+        </main>
     </div>
 
+    <!-- Delete Modal -->
     <div class="modal-overlay" id="deleteModal">
         <div class="modal">
             <div class="modal-header">
@@ -638,6 +181,7 @@
         </div>
     </div>
 
+    <!-- Compare Modal -->
     <div class="modal-overlay compare-modal" id="compareModal">
         <div class="modal">
             <div class="modal-header">
